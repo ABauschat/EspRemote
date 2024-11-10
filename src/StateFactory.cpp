@@ -3,6 +3,7 @@
 #include "MenuState.h"
 #include "SnakeGameState.h"
 #include "ClearState.h"
+#include "CloneNFCState.h"
 
 namespace NuggetsInc {
 
@@ -18,6 +19,8 @@ AppState *StateFactory::createActualState(StateType type)
             return new MenuState();
         case SNAKE_GAME_STATE:
             return new SnakeGameState();
+        case CLONE_NFC_STATE:
+            return new CloneNFCState();
         default:
             return nullptr;
     }

@@ -93,13 +93,7 @@ void MenuState::executeSelection() {
             displayMenu();
             break;
         case 2: // Clone NFC Chip
-            gfx->fillScreen(BLACK);
-            gfx->setTextColor(WHITE);
-            gfx->setTextSize(2);
-            gfx->setCursor(10, 100);
-            gfx->println("Cloning NFC...");
-            delay(2000);
-            displayMenu();
+             app.changeState(StateFactory::createState(CLONE_NFC_STATE));
             break;
         case 3: // Play Snake Game
             app.changeState(StateFactory::createState(SNAKE_GAME_STATE));
