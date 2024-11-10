@@ -1,6 +1,8 @@
+// ClearState.cpp
 #include "ClearState.h"
 #include "Device.h"
 #include "Application.h"
+#include "StateFactory.h"
 
 namespace NuggetsInc {
 
@@ -12,8 +14,8 @@ void ClearState::onEnter() {
 }
 
 void ClearState::update() {
-    // Transition to the specified next state
-    Application::getInstance().changeState(StateFactory::createState(nextState));
+    // Transition to the specified next state without wrapping
+    Application::getInstance().changeState(StateFactory::createActualState(nextState));
 }
 
 void ClearState::onExit() {

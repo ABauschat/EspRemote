@@ -210,7 +210,7 @@ void SnakeGameState::gameOver() {
     delay(3000);
 
     // Transition to Clear State first, then to MenuState
-    Application::getInstance().changeState(StateFactory::createClearStateWithNext(MENU_STATE));
+    Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
 
 }
 

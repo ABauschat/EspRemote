@@ -14,7 +14,7 @@ enum StateType {
 class StateFactory {
 public:
     static AppState* createState(StateType type);
-    static AppState* createClearStateWithNext(StateType nextState);
+    static AppState* createActualState(StateType type);
 };
 
 } // namespace NuggetsInc
