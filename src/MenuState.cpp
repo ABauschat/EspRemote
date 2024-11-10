@@ -20,7 +20,6 @@ void MenuState::onEnter() {
 }
 
 void MenuState::onExit() {
-    // Clean up if necessary
 }
 
 void MenuState::update() {

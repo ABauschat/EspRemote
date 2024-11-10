@@ -7,13 +7,14 @@ namespace NuggetsInc {
 
 enum StateType {
     MENU_STATE,
-    SNAKE_GAME_STATE
-    // Add other states as needed
+    SNAKE_GAME_STATE,
+    CLEAR_STATE
 };
 
 class StateFactory {
 public:
     static AppState* createState(StateType type);
+    static AppState* createClearStateWithNext(StateType nextState);
 };
 
 } // namespace NuggetsInc

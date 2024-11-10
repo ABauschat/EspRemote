@@ -193,6 +193,8 @@ void SnakeGameState::drawGame() {
 }
 
 void SnakeGameState::gameOver() {
+    EventManager::getInstance().clearEvents();  
+
     Arduino_GFX* gfx = Device::getInstance().getDisplay();
     gfx->fillScreen(BLACK);
     gfx->setTextColor(RED);
@@ -207,8 +209,9 @@ void SnakeGameState::gameOver() {
     gfx->println("Returning to Menu");
     delay(3000);
 
-    // Return to menu
-    Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+    // Transition to Clear State first, then to MenuState
+    Application::getInstance().changeState(StateFactory::createClearStateWithNext(MENU_STATE));
+
 }
 
 } // namespace NuggetsInc
