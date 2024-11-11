@@ -222,33 +222,27 @@ void CloneNFCState::displayTagInfo(const String& tagType, const String& unused) 
     Arduino_GFX* gfx = Device::getInstance().getDisplay();
     gfx->fillScreen(BLACK);
 
-    // Display "NFC Tag Found!" in white with text size 2
-    gfx->setTextColor(COLOR_WHITE);
-    gfx->setTextSize(2);
-    gfx->setCursor(10, 10);
-    gfx->println("NFC Tag Found!");
-
     // Display "Type:" label in orange with text size 2
     gfx->setTextSize(2);
     gfx->setTextColor(COLOR_ORANGE);
-    gfx->setCursor(10, 40);
+    gfx->setCursor(10, 10);
     gfx->println("Type:");
 
     // Display actual tag type in orange with text size 2
     gfx->setTextColor(COLOR_ORANGE);
-    gfx->setCursor(80, 40); // Adjust X position as needed
+    gfx->setCursor(80, 10); // Adjust X position as needed
     gfx->println(tagType);
 
     // Display "UID:" label in green with text size 1
     gfx->setTextSize(1); // Approximate 1.5 by using size 1 for label and size 2 for value
     gfx->setTextColor(COLOR_GREEN);
-    gfx->setCursor(10, 70);
+    gfx->setCursor(10, 40);
     gfx->println("UID:");
 
     // Display actual UID in green with text size 2
     gfx->setTextSize(2);
     gfx->setTextColor(COLOR_GREEN);
-    gfx->setCursor(80, 70); // Adjust X position as needed
+    gfx->setCursor(80, 40); // Adjust X position as needed
     String uidStr = "";
     for (uint8_t i = 0; i < uidLength; i++) {
         if (uid[i] < 0x10) {
@@ -262,11 +256,11 @@ void CloneNFCState::displayTagInfo(const String& tagType, const String& unused) 
     // Display "Data:" label in white with text size 1
     gfx->setTextSize(2);
     gfx->setTextColor(COLOR_WHITE);
-    gfx->setCursor(10, 110);
+    gfx->setCursor(10, 70);
     gfx->println("Data:");
 
     // Display visible data lines based on currentScrollLine
-    gfx->setTextSize(1.5);
+    gfx->setTextSize(1);
     for (int i = 0; i < maxVisibleLines; i++) {
         int lineIndex = currentScrollLine + i;
         if (lineIndex < totalDataLines) {
@@ -282,6 +276,7 @@ void CloneNFCState::displayTagInfo(const String& tagType, const String& unused) 
     gfx->setTextColor(COLOR_WHEAT_CREAM);
     gfx->println("\nUse Up/Down to scroll");
     gfx->println("Press Back to return");
+    gfx->println("Press Select to Clone");
 }
 
 void CloneNFCState::splitDataIntoLines(const String& tagData) {

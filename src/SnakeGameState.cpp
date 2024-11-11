@@ -8,7 +8,10 @@ namespace NuggetsInc {
 
 SnakeGameState::SnakeGameState()
     : snakeLength(5), snakeDirection(1), lastUpdateTime(0),
-      updateInterval(200), score(0) {}
+      updateInterval(200), score(0), updateScore(true) {
+    prevApple.x = -1;
+    prevApple.y = -1;
+}
 
 SnakeGameState::~SnakeGameState() {}
 
@@ -70,24 +73,44 @@ void SnakeGameState::initGame() {
         snake[i].y = startY;
     }
 
+    prevTail = snake[snakeLength - 1]; // Initialize previous tail
+    newHead = snake[0]; // Initialize new head
+
     spawnApple(); // Spawn the first apple
     score = 0;
+    updateScore = true; // Ensure the score is drawn initially
     lastUpdateTime = millis();
 
-    // Clear the screen
-    Device::getInstance().getDisplay()->fillScreen(BLACK);
+    // Initialize the display
+    Arduino_GFX* gfx = Device::getInstance().getDisplay();
+    gfx->fillScreen(BLACK);
+
+    // **Draw the score area separator line one pixel above**
+    gfx->drawFastHLine(0, SCORE_AREA_HEIGHT - 1, SCREEN_WIDTH, WHITE);
+
+    // Draw the bottom margin in white
+    gfx->fillRect(0, SCREEN_HEIGHT - BOTTOM_MARGIN, SCREEN_WIDTH, BOTTOM_MARGIN, WHITE);
+
+    // Draw initial snake
+    for (int i = 0; i < snakeLength; i++) {
+        gfx->fillRect(snake[i].x, snake[i].y, SNAKE_SIZE, SNAKE_SIZE, GREEN);
+    }
+
+    // Draw initial apple
+    gfx->fillRect(apple.x, apple.y, SNAKE_SIZE, SNAKE_SIZE, RED);
 }
 
 void SnakeGameState::spawnApple() {
     bool validPosition = false;
+    prevApple = apple; // Store previous apple position
     while (!validPosition) {
-        // Generate random positions within the game area
-        int maxX = SCREEN_WIDTH / SNAKE_SIZE;
-        int minY = SCORE_AREA_HEIGHT / SNAKE_SIZE;
-        int maxY = SCREEN_HEIGHT / SNAKE_SIZE;
+        // Adjusted maxX and maxY to prevent overflow
+        int maxX = (SCREEN_WIDTH - SNAKE_SIZE) / SNAKE_SIZE; //52 for SCREEN_WIDTH=536
+        int minY = SCORE_AREA_HEIGHT / SNAKE_SIZE; //3
+        int maxY = (SCREEN_HEIGHT - BOTTOM_MARGIN - SNAKE_SIZE) / SNAKE_SIZE; //20
 
-        apple.x = random(0, maxX) * SNAKE_SIZE;
-        apple.y = random(minY, maxY) * SNAKE_SIZE;
+        apple.x = random(0, maxX + 1) * SNAKE_SIZE; // 0 to 520
+        apple.y = random(minY, maxY + 1) * SNAKE_SIZE; // 30 to 200
 
         validPosition = true;
 
@@ -102,94 +125,90 @@ void SnakeGameState::spawnApple() {
 }
 
 void SnakeGameState::updateSnake() {
-    // Store the previous tail position
-    Point prevTail = snake[snakeLength - 1];
-
-    // Move each segment to the position of the previous one
-    for (int i = snakeLength - 1; i > 0; i--) {
-        snake[i] = snake[i - 1];
-    }
-
-    // Update head position based on direction
+    // Compute the intended new head position
+    Point intendedHead = snake[0];
     switch (snakeDirection) {
         case 0: // Up
-            snake[0].y -= SNAKE_SIZE;
+            intendedHead.y -= SNAKE_SIZE;
             break;
         case 1: // Right
-            snake[0].x += SNAKE_SIZE;
+            intendedHead.x += SNAKE_SIZE;
             break;
         case 2: // Down
-            snake[0].y += SNAKE_SIZE;
+            intendedHead.y += SNAKE_SIZE;
             break;
         case 3: // Left
-            snake[0].x -= SNAKE_SIZE;
+            intendedHead.x -= SNAKE_SIZE;
             break;
     }
 
-    // Boundary checks for horizontal movement with wrapping
-    if (snake[0].x < 0)
-        snake[0].x = SCREEN_WIDTH - SNAKE_SIZE;
-    if (snake[0].x >= SCREEN_WIDTH)
-        snake[0].x = 0;
-
-    // Boundary checks for vertical movement without wrapping
-    if (snake[0].y < SCORE_AREA_HEIGHT) {
-        snake[0].y = SCORE_AREA_HEIGHT;
-        // Optional feedback
-        Sounds::getInstance().playTone(500, 100); // Example feedback
-    }
-    if (snake[0].y >= SCREEN_HEIGHT) {
-        snake[0].y = SCREEN_HEIGHT - SNAKE_SIZE;
-        // Optional feedback
-        Sounds::getInstance().playTone(500, 100); // Example feedback
+    // Boundary checks before moving
+    if (intendedHead.x < 0 || (intendedHead.x + SNAKE_SIZE) > SCREEN_WIDTH ||
+        intendedHead.y < SCORE_AREA_HEIGHT || (intendedHead.y + SNAKE_SIZE) > (SCREEN_HEIGHT - BOTTOM_MARGIN)) {
+        gameOver();
+        return;
     }
 
-    // Check for collisions with self
-    for (int i = 1; i < snakeLength; i++) {
-        if (snake[0].x == snake[i].x && snake[0].y == snake[i].y) {
+    // Check for collision with self
+    for (int i = 0; i < snakeLength; i++) {
+        if (intendedHead.x == snake[i].x && intendedHead.y == snake[i].y) {
             gameOver();
             return;
         }
     }
 
     // Check for apple collision
-    if (snake[0].x == apple.x && snake[0].y == apple.y) {
+    bool appleEaten = false;
+    if (intendedHead.x == apple.x && intendedHead.y == apple.y) {
+        appleEaten = true;
         score++;
         if (snakeLength < MAX_SNAKE_LENGTH) {
-            // Add new segment at the tail
             snake[snakeLength] = prevTail;
             snakeLength++;
         }
         spawnApple();
         Sounds::getInstance().playTone(1000, 100);
+        updateScore = true;
     }
+
+    // Move the snake
+    prevTail = snake[snakeLength - 1];
+    for (int i = snakeLength - 1; i > 0; i--) {
+        snake[i] = snake[i - 1];
+    }
+    snake[0] = intendedHead;
+    newHead = snake[0];
 }
 
 void SnakeGameState::drawGame() {
     Arduino_GFX* gfx = Device::getInstance().getDisplay();
-    gfx->fillScreen(BLACK);
-    
-    // Draw the horizontal line separating score and game area
-    gfx->drawFastHLine(0, SCORE_AREA_HEIGHT, SCREEN_WIDTH, WHITE);
 
-    // Draw apple only within the game area
-    if (apple.y >= SCORE_AREA_HEIGHT && apple.y < SCREEN_HEIGHT) {
+    // Erase the previous tail segment
+    gfx->fillRect(prevTail.x, prevTail.y, SNAKE_SIZE, SNAKE_SIZE, BLACK);
+
+    // Draw the new head segment
+    gfx->fillRect(newHead.x, newHead.y, SNAKE_SIZE, SNAKE_SIZE, GREEN);
+
+    // Erase previous apple if it has moved
+    if (prevApple.x != apple.x || prevApple.y != apple.y) {
+        // Draw the new apple
         gfx->fillRect(apple.x, apple.y, SNAKE_SIZE, SNAKE_SIZE, RED);
     }
 
-    // Draw snake segments only within the game area
-    for (int i = 0; i < snakeLength; i++) {
-        if (snake[i].y >= SCORE_AREA_HEIGHT && snake[i].y < SCREEN_HEIGHT) {
-            gfx->fillRect(snake[i].x, snake[i].y, SNAKE_SIZE, SNAKE_SIZE, GREEN);
-        }
-    }
+    // Draw score only if it has been updated
+    if (updateScore) {
+        // Clear the previous score by filling the score area background
+        gfx->fillRect(0, 0, SCREEN_WIDTH, SCORE_AREA_HEIGHT, WHITE);
 
-    // Draw score
-    gfx->setTextColor(WHITE);
-    gfx->setTextSize(2);
-    gfx->setCursor(0, 5); // Adjust y-position to fit within score area
-    gfx->print("Score: ");
-    gfx->println(score);
+        // Draw the updated score
+        gfx->setTextColor(BLACK);
+        gfx->setTextSize(2);
+        gfx->setCursor(0, 5); // Adjust y-position to fit within score area
+        gfx->print("Score: ");
+        gfx->println(score);
+
+        updateScore = false; // Reset the flag
+    }
 }
 
 void SnakeGameState::gameOver() {
@@ -199,19 +218,18 @@ void SnakeGameState::gameOver() {
     gfx->fillScreen(BLACK);
     gfx->setTextColor(RED);
     gfx->setTextSize(3);
-    gfx->setCursor(100, SCREEN_HEIGHT / 2 - 30);
+    gfx->setCursor(100, (SCREEN_HEIGHT / 2) - 30);
     gfx->println("Game Over");
     gfx->setTextSize(2);
     gfx->setCursor(100, SCREEN_HEIGHT / 2);
     gfx->print("Score: ");
     gfx->println(score);
-    gfx->setCursor(80, SCREEN_HEIGHT / 2 + 30);
+    gfx->setCursor(80, (SCREEN_HEIGHT / 2) + 30);
     gfx->println("Returning to Menu");
     delay(3000);
 
-    // Transition to Clear State first, then to MenuState
+    // Transition to MenuState
     Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
-
 }
 
 } // namespace NuggetsInc
