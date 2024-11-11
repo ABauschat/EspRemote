@@ -27,12 +27,14 @@ CloneNFCState::CloneNFCState()
 CloneNFCState::~CloneNFCState() {}
 
 void CloneNFCState::onEnter() {
-    displayMessage("Searching for NFC chip...");
+    NewTerminalDisplay("Verifying NFC chip");
 
     // Initialize the I2C interface with correct pins
     Wire.begin(42, 45); // SDA, SCL
+    AddToTerminalDisplay("I2C interface initialized");
 
     nfc.begin();
+    AddToTerminalDisplay("NFC module initialized");
 
     uint32_t versiondata = nfc.getFirmwareVersion();
     if (!versiondata) {
@@ -43,6 +45,11 @@ void CloneNFCState::onEnter() {
     }
 
     nfc.SAMConfig(); // Configure the PN532 to read RFID tags
+    AddToTerminalDisplay("SAMConfig completed");
+
+    delay(500); // Wait for the module to initialize
+
+    displayMessage("Ready to read NFC tag");
     tagDetected = false;
 }
 
@@ -82,6 +89,25 @@ void CloneNFCState::displayMessage(const String& message) {
     gfx->setCursor(10, 60);
     gfx->println(message);
 }
+
+
+
+void CloneNFCState::NewTerminalDisplay(const String& message) {
+    Arduino_GFX* gfx = Device::getInstance().getDisplay();
+    gfx->fillScreen(BLACK);
+    gfx->setTextColor(COLOR_WHITE);
+    gfx->setTextSize(2);
+    gfx->setCursor(0, 60);
+    gfx->println(message);
+    delay(100);
+}
+
+void CloneNFCState::AddToTerminalDisplay(const String& message) {
+    Arduino_GFX* gfx = Device::getInstance().getDisplay();
+    gfx->println(message);
+    delay(100);
+}
+
 
 void CloneNFCState::readNFCTag() {
     if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {

@@ -29,10 +29,10 @@ private:
     void displayTagInfo(const String& tagType, const String& tagData);
     void handleScroll(EventType eventType);
     void splitDataIntoLines(const String& tagData);
+    void NewTerminalDisplay(const String& message);
+    void AddToTerminalDisplay(const String& message);
 
     // NFC variables
-
-
     Adafruit_PN532 nfc;
     bool tagDetected;
     uint8_t uid[7];    // Buffer to store the returned UID
