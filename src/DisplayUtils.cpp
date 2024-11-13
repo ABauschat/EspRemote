@@ -33,23 +33,34 @@ void DisplayUtils::addToTerminalDisplay(const String& message) {
 }
 
 void DisplayUtils::displayDataTab(const std::vector<String>& dataLines, int currentScrollLine, int maxVisibleLines) {
-    gfx->setTextSize(1);
+    // Define the area you want to clear before writing the text
+    int x = 10;                     // Starting x position
+    int y = 40;                     // Starting y position
+    int width = gfx->width() - x * 2;   // Width of the text area
+    int lineHeight = 20;            // Approximate height of each line (adjust as needed)
+    int clearHeight = lineHeight * maxVisibleLines; // Exact height to clear only the visible lines
+
+    // Clear the exact area of the visible lines only
+    gfx->fillRect(x, y, width, clearHeight, COLOR_BLACK);
+
+    // Set text properties for drawing each line individually
+    gfx->setTextSize(2);
     gfx->setTextColor(COLOR_WHITE);
-    gfx->setCursor(10, 40); // Adjust cursor position as needed
+
+    // Write each line at a specific y-coordinate to avoid automatic line breaks
     for (int i = 0; i < maxVisibleLines; i++) {
         int lineIndex = currentScrollLine + i;
         if (lineIndex < dataLines.size()) {
-            gfx->println(dataLines[lineIndex]);
-        }
-        else {
-            gfx->println();
+            gfx->setCursor(x, y + i * lineHeight); // Position each line manually
+            gfx->print(dataLines[lineIndex]);      // Use print() instead of println() to avoid automatic line break
         }
     }
 }
 
+
 void DisplayUtils::displayInfoTab(const String& tagType, const std::vector<NDEFRecord>& parsedRecords, const String& availableSpace, int uidLength, uint8_t* uid) {
     gfx->setTextSize(1);
-    gfx->setTextColor(COLOR_GREEN);
+    gfx->setTextColor(COLOR_WHITE);
     gfx->setCursor(10, 40); // Adjust cursor position as needed
     
     gfx->println("Tag Type: " + tagType);
@@ -88,9 +99,9 @@ void DisplayUtils::displayTagInfo(const String& tagType, const String& tagData, 
     // Display Tabs
     gfx->setTextSize(1);
     // Indicate current tab with different color
-    gfx->setTextColor(currentTab == TAB_DATA ? COLOR_WHITE : COLOR_WHEAT_CREAM);
+    gfx->setTextColor(currentTab == TAB_DATA ? COLOR_WHITE : COLOR_ORANGE);
     gfx->print("Data\t");
-    gfx->setTextColor(currentTab == TAB_INFO ? COLOR_WHITE : COLOR_WHEAT_CREAM);
+    gfx->setTextColor(currentTab == TAB_INFO ? COLOR_WHITE : COLOR_ORANGE);
     gfx->println("Info");
 
     // Display Content based on currentTab
@@ -102,9 +113,9 @@ void DisplayUtils::displayTagInfo(const String& tagType, const String& tagData, 
     }
 
     // Instructions
-    gfx->setTextSize(1);
+    gfx->setTextSize(2);
     gfx->setTextColor(COLOR_WHEAT_CREAM);
-    gfx->println("\nPress Select to clone");
+    gfx->println("\n\nPress Select to clone");
     gfx->println("Use Up/Down to scroll");
     gfx->println("Press Back to return");
 }
