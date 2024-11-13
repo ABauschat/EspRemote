@@ -12,7 +12,6 @@
 
 namespace NuggetsInc {
 
-// Constructor
 CloneNFCState::CloneNFCState()
     : currentTab(TAB_DATA),
       tagDetected(false),
@@ -21,18 +20,15 @@ CloneNFCState::CloneNFCState()
       displayUtils(nullptr),
       availableSpace("Unknown") {
         
-    // Initialize NFCLogic with IRQ and RESET pins
     nfcLogic = new NFCLogic(PN532_IRQ, PN532_RESET);
     displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
 }
 
-// Destructor
 CloneNFCState::~CloneNFCState() {
     delete nfcLogic;
     delete displayUtils;
 }
 
-// onEnter method
 void CloneNFCState::onEnter() {
     displayUtils->newTerminalDisplay("Verifying NFC chip");
 
@@ -48,12 +44,10 @@ void CloneNFCState::onEnter() {
     tagDetected = false;
 }
 
-// onExit method
 void CloneNFCState::onExit() {
-    // Any necessary cleanup can be done here
+   
 }
 
-// update method
 void CloneNFCState::update() {
     EventManager& eventManager = EventManager::getInstance();
     Event event;
@@ -66,12 +60,19 @@ void CloneNFCState::update() {
         else if (event.type == EVENT_UP || event.type == EVENT_DOWN) {
             handleScroll(event.type);
         }
+        else if (event.type == EVENT_LEFT || event.type == EVENT_RIGHT)
+        {
+            if (tagDetected) {
+                currentTab = (currentTab == TAB_DATA) ? TAB_INFO : TAB_DATA;
+                displayUtils->displayTagInfo(clonedTagType, clonedData, parsedRecords, availableSpace, uidLength, uid, currentTab, dataLines, currentScrollLine, maxVisibleLines);
+            }
+        } 
+
         else if (event.type == EVENT_SELECT) {
             if (tagDetected) {
                 if (currentTab == TAB_INFO) {
-                    // Initiate cloning process
                     displayUtils->displayMessage("Cloning in progress...");
-                    delay(1000); // Allow message to display
+                    delay(1000); 
 
                     if (cloneTagData()) {
                         displayUtils->displayMessage("Clone Successful!");
@@ -83,11 +84,6 @@ void CloneNFCState::update() {
                     Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
                     return;
                 }
-                else {
-                    // Toggle between tabs
-                    currentTab = (currentTab == TAB_DATA) ? TAB_INFO : TAB_DATA;
-                    displayUtils->displayTagInfo(clonedTagType, clonedData, parsedRecords, availableSpace, uidLength, uid, currentTab, dataLines, currentScrollLine, maxVisibleLines);
-                }
             }
         }
     }
@@ -97,9 +93,7 @@ void CloneNFCState::update() {
     }
 }
 
-// Read NFC Tag
 void CloneNFCState::readNFCTag() {
-    Serial.println("Attempting to read NFC Tag...");
     TagData tagData;
 
     if (nfcLogic->readAndParseTagData(tagData)) {
@@ -119,18 +113,16 @@ void CloneNFCState::readNFCTag() {
     }
 }
 
-// Clone Tag Data
 bool CloneNFCState::cloneTagData() {
     if (!nfcLogic->validateAndCloneTag(clonedTagType, dataLines)) {
         displayUtils->displayMessage("Clone Failed!");
         delay(2000);
         return false;
     }
-    // If cloning is successful, the success message is already displayed in validateAndCloneTag
+
     return true;
 }
 
-// Handle scrolling
 void CloneNFCState::handleScroll(EventType eventType) {
     if (currentTab == TAB_DATA) {
         if (eventType == EVENT_UP) {
@@ -147,11 +139,9 @@ void CloneNFCState::handleScroll(EventType eventType) {
         }
     }
     else if (currentTab == TAB_INFO) {
-        // Currently no scrolling for TAB_INFO; implement if needed
     }
 }
 
-// Split data into lines for display
 void CloneNFCState::splitDataIntoLines(const String& tagData) {
     dataLines.clear();
     currentScrollLine = 0;
