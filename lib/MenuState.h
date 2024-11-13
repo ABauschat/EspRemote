@@ -1,7 +1,11 @@
+// MenuState.h
 #ifndef MENUSTATE_H
 #define MENUSTATE_H
 
 #include "State.h"
+#include "DisplayUtils.h"
+#include <vector>
+#include <string>
 
 namespace NuggetsInc {
 
@@ -21,6 +25,9 @@ private:
     static const int menuItems = 4;
     String menu[menuItems];
     int menuIndex;
+
+    // Display utilities
+    DisplayUtils* displayUtils;
 };
 
 } // namespace NuggetsInc

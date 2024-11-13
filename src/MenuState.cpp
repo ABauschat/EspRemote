@@ -1,25 +1,36 @@
+// MenuState.cpp
 #include "MenuState.h"
 #include "Device.h"
 #include "Sounds.h"
 #include "StateFactory.h"
 #include "Application.h"
+#include "EventManager.h"
+#include "Colors.h"
 
 namespace NuggetsInc {
 
-MenuState::MenuState() : menuIndex(0) {
+MenuState::MenuState()
+    : menuIndex(0),
+      displayUtils(nullptr) {
     menu[0] = "Connect To Device";
     menu[1] = "Setup NFC Chip";
     menu[2] = "Clone NFC Chip";
     menu[3] = "Play Snake Game";
+
+    // Initialize DisplayUtils
+    displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
 }
 
-MenuState::~MenuState() {}
+MenuState::~MenuState() {
+    delete displayUtils;
+}
 
 void MenuState::onEnter() {
     displayMenu();
 }
 
 void MenuState::onExit() {
+    // Any necessary cleanup can be done here
 }
 
 void MenuState::update() {
@@ -54,18 +65,19 @@ void MenuState::update() {
 
 void MenuState::displayMenu() {
     Arduino_GFX* gfx = Device::getInstance().getDisplay();
-    gfx->fillScreen(BLACK);
+    gfx->fillScreen(COLOR_BLACK);
     gfx->setTextSize(2);
 
     for (int i = 0; i < menuItems; i++) {
         if (i == menuIndex) {
             // Highlight the selected menu item
-            gfx->setTextColor(RED);
-        } else {
-            gfx->setTextColor(WHITE);
+            gfx->setTextColor(COLOR_RED);
+        }
+        else {
+            gfx->setTextColor(COLOR_WHITE);
         }
         gfx->setCursor(10, 30 + i * 30);
-        gfx->println(menu[i]);
+        gfx->println(menu[i].c_str());
     }
 }
 
@@ -75,25 +87,17 @@ void MenuState::executeSelection() {
 
     switch (menuIndex) {
         case 0: // Connect To Device
-            gfx->fillScreen(BLACK);
-            gfx->setTextColor(WHITE);
-            gfx->setTextSize(2);
-            gfx->setCursor(10, 100);
-            gfx->println("Connecting...");
+            displayUtils->displayMessage("Connecting...");
             delay(2000);
             displayMenu();
             break;
         case 1: // Setup NFC Chip
-            gfx->fillScreen(BLACK);
-            gfx->setTextColor(WHITE);
-            gfx->setTextSize(2);
-            gfx->setCursor(10, 100);
-            gfx->println("Setting up NFC...");
+            displayUtils->displayMessage("Setting up NFC...");
             delay(2000);
             displayMenu();
             break;
         case 2: // Clone NFC Chip
-             app.changeState(StateFactory::createState(CLONE_NFC_STATE));
+            app.changeState(StateFactory::createState(CLONE_NFC_STATE));
             break;
         case 3: // Play Snake Game
             app.changeState(StateFactory::createState(SNAKE_GAME_STATE));
