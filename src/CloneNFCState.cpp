@@ -100,31 +100,16 @@ void CloneNFCState::update() {
 // Read NFC Tag
 void CloneNFCState::readNFCTag() {
     Serial.println("Attempting to read NFC Tag...");
-    if (nfcLogic->readTag(uid, &uidLength)) {
+    TagData tagData;
+
+    if (nfcLogic->readAndParseTagData(tagData)) {
         tagDetected = true;
-
-        clonedTagType = nfcLogic->getTagType(uidLength);
-        clonedData = nfcLogic->readTagData(clonedTagType, uid, uidLength);
-
-        if (clonedTagType == TAG_TYPE_NTAG2XX) {
-            // Parse NDEF records
-            // Convert clonedData string to raw bytes
-            std::vector<uint8_t> rawData;
-            for (size_t i = 0; i < clonedData.length(); i += 3) { // Assuming "XX " format
-                if (i + 2 > clonedData.length()) break;
-                String byteStr = clonedData.substring(i, i + 2);
-                rawData.push_back(static_cast<uint8_t>(strtol(byteStr.c_str(), NULL, 16)));
-            }
-            parsedRecords = nfcLogic->parseNDEF(rawData.data(), rawData.size());
-        }
-
-        // Determine available space based on tag type
-        if (clonedTagType == TAG_TYPE_NTAG2XX) {
-            availableSpace = "888 bytes"; // Example for NTAG216
-        }
-        else {
-            availableSpace = "Unknown";
-        }
+        this->clonedTagType = tagData.tagType;
+        this->clonedData = tagData.data;
+        this->parsedRecords = tagData.ndefRecords;
+        this->availableSpace = tagData.availableSpace;
+        memcpy(this->uid, tagData.uid, tagData.uidLength);
+        this->uidLength = tagData.uidLength;
 
         splitDataIntoLines(clonedData);
         displayUtils->displayTagInfo(clonedTagType, clonedData, parsedRecords, availableSpace, uidLength, uid, currentTab, dataLines, currentScrollLine, maxVisibleLines);
@@ -136,37 +121,13 @@ void CloneNFCState::readNFCTag() {
 
 // Clone Tag Data
 bool CloneNFCState::cloneTagData() {
-    uint8_t targetUID[7];
-    uint8_t targetUIDLength = 0;
-    bool targetDetected = nfcLogic->readTag(targetUID, &targetUIDLength);
-
-    if (!targetDetected) {
-        displayUtils->displayMessage("No target tag detected");
+    if (!nfcLogic->validateAndCloneTag(clonedTagType, dataLines)) {
+        displayUtils->displayMessage("Clone Failed!");
         delay(2000);
         return false;
     }
-
-    String targetTagType = nfcLogic->getTagType(targetUIDLength);
-
-    if (clonedTagType != targetTagType) {
-        displayUtils->displayMessage("Tag types do not match");
-        delay(2000);
-        return false;
-    }
-
-    if (clonedTagType == TAG_TYPE_MIFARE_CLASSIC) {
-        return nfcLogic->cloneTagData(clonedTagType, targetUID, targetUIDLength, dataLines);
-    }
-    else if (clonedTagType == TAG_TYPE_NTAG2XX) {
-        return nfcLogic->cloneTagData(clonedTagType, targetUID, targetUIDLength, dataLines);
-    }
-    else {
-        displayUtils->displayMessage("Unsupported tag type for cloning");
-        delay(2000);
-        return false;
-    }
-
-    return false;
+    // If cloning is successful, the success message is already displayed in validateAndCloneTag
+    return true;
 }
 
 // Handle scrolling
@@ -186,6 +147,7 @@ void CloneNFCState::handleScroll(EventType eventType) {
         }
     }
     else if (currentTab == TAB_INFO) {
+        // Currently no scrolling for TAB_INFO; implement if needed
     }
 }
 
