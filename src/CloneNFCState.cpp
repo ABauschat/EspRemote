@@ -6,23 +6,28 @@
 #include <Wire.h>
 #include <Adafruit_PN532.h>
 
-#define CLONE_SELECT_TIMEOUT 5000 // Timeout in ms to wait for target tag
-
 namespace NuggetsInc {
 
+#define CLONE_SELECT_TIMEOUT 5000 // Timeout in ms to wait for target tag
+
+// Constructor
 CloneNFCState::CloneNFCState()
     : nfc(PN532_IRQ, PN532_RESET),
       tagDetected(false), 
       uidLength(0),
       totalDataLines(0), 
       currentScrollLine(0), 
-      maxVisibleLines(8) // Adjust based on your display's size
+      maxVisibleLines(8), // Adjust based on your display's size
+      currentTab(TAB_DATA),
+      ndefLength(0)
 {
     gfx = Device::getInstance().getDisplay();
 }
 
+// Destructor
 CloneNFCState::~CloneNFCState() {}
 
+// onEnter method
 void CloneNFCState::onEnter() {
     NewTerminalDisplay("Verifying NFC chip");
     Wire.begin(42, 45); // SDA, SCL
@@ -51,6 +56,7 @@ void CloneNFCState::onEnter() {
     tagDetected = false;
 }
 
+// onExit method
 void CloneNFCState::onExit() {
     nfc.SAMConfig();
     nfc.wakeup();
@@ -58,6 +64,7 @@ void CloneNFCState::onExit() {
     delay(100);
 }
 
+// update method
 void CloneNFCState::update() {
     EventManager& eventManager = EventManager::getInstance();
     Event event;
@@ -71,16 +78,27 @@ void CloneNFCState::update() {
             handleScroll(event.type);
         }
         else if (event.type == EVENT_SELECT) {
-            if (tagDetected && !clonedData.isEmpty()) {
-                if (cloneTagData()) {
-                    displayMessage("Clone Successful!");
+            if (tagDetected) {
+                if (currentTab == TAB_INFO) {
+                    // Initiate cloning process
+                    displayMessage("Cloning in progress...");
+                    delay(1000); // Allow message to display
+
+                    if (cloneTagData()) {
+                        displayMessage("Clone Successful!");
+                    }
+                    else {
+                        displayMessage("Clone Failed!");
+                    }
+                    delay(2000);
+                    Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+                    return;
                 }
                 else {
-                    displayMessage("Clone Failed!");
+                    // Toggle between tabs
+                    currentTab = (currentTab == TAB_DATA) ? TAB_INFO : TAB_DATA;
+                    displayTagInfo(clonedTagType, clonedData);
                 }
-                delay(2000);
-                Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
-                return;
             }
         }
     }
@@ -90,14 +108,17 @@ void CloneNFCState::update() {
     }
 }
 
+// Display a single message
 void CloneNFCState::displayMessage(const String& message) {
     gfx->fillScreen(COLOR_BLACK);
     gfx->setTextColor(COLOR_WHITE);
     gfx->setTextSize(2);
     gfx->setCursor(10, 60);
     gfx->println(message);
+    // No need to call gfx->flush() or gfx->display()
 }
 
+// Display a new terminal message
 void CloneNFCState::NewTerminalDisplay(const String& message) {
     gfx->fillScreen(COLOR_BLACK);
     gfx->setTextColor(COLOR_WHITE);
@@ -105,51 +126,57 @@ void CloneNFCState::NewTerminalDisplay(const String& message) {
     gfx->setCursor(0, 60);
     gfx->println(message);
     delay(100);
+    // No need to call gfx->flush() or gfx->display()
 }
 
+// Add to terminal display
 void CloneNFCState::AddToTerminalDisplay(const String& message) {
     gfx->setTextColor(COLOR_WHITE);
     gfx->setTextSize(1);
     gfx->println(message);
     delay(100);
+    // No need to call gfx->flush() or gfx->display()
 }
 
+// Display tag information with tabs
 void CloneNFCState::displayTagInfo(const String& tagType, const String& tagData) {
     gfx->fillScreen(COLOR_BLACK);
-
+    
+    // Display Header
     gfx->setTextSize(2);
     gfx->setTextColor(COLOR_ORANGE);
     gfx->setCursor(10, 10);
-    gfx->println("Type:");
+    gfx->println("NFC Tag Info");
 
-    gfx->setTextColor(COLOR_ORANGE);
-    gfx->setCursor(80, 10);
-    gfx->println(tagType);
-
+    // Display Tabs
     gfx->setTextSize(1);
-    gfx->setTextColor(COLOR_GREEN);
-    gfx->setCursor(10, 40);
-    gfx->println("UID:");
+    // Indicate current tab with different color
+    gfx->setTextColor(currentTab == TAB_DATA ? COLOR_WHITE : COLOR_WHEAT_CREAM);
+    gfx->print("Data\t");
+    gfx->setTextColor(currentTab == TAB_INFO ? COLOR_WHITE : COLOR_WHEAT_CREAM);
+    gfx->println("Info");
 
-    gfx->setTextSize(2);
-    gfx->setTextColor(COLOR_GREEN);
-    gfx->setCursor(80, 40);
-    String uidStr = "";
-    for (uint8_t i = 0; i < uidLength; i++) {
-        if (uid[i] < 0x10) {
-            uidStr += "0"; // Leading zero
-        }
-        uidStr += String(uid[i], HEX);
-        uidStr += " ";
+    // Display Content based on currentTab
+    if (currentTab == TAB_DATA) {
+        displayDataTab();
     }
-    gfx->println(uidStr);
+    else if (currentTab == TAB_INFO) {
+        displayInfoTab();
+    }
 
-    gfx->setTextSize(2);
-    gfx->setTextColor(COLOR_WHITE);
-    gfx->setCursor(10, 70);
-    gfx->println("Data:");
-
+    // Instructions
     gfx->setTextSize(1);
+    gfx->setTextColor(COLOR_WHEAT_CREAM);
+    gfx->println("\nPress Select to clone");
+    gfx->println("Use Up/Down to scroll");
+    gfx->println("Press Back to return");
+}
+
+// Display Data tab (raw bytes)
+void CloneNFCState::displayDataTab() {
+    gfx->setTextSize(1);
+    gfx->setTextColor(COLOR_WHITE);
+    gfx->setCursor(10, 40); // Adjust cursor position as needed
     for (int i = 0; i < maxVisibleLines; i++) {
         int lineIndex = currentScrollLine + i;
         if (lineIndex < totalDataLines) {
@@ -159,32 +186,72 @@ void CloneNFCState::displayTagInfo(const String& tagType, const String& tagData)
             gfx->println();
         }
     }
+    // No need to call gfx->flush() or gfx->display()
+}
 
+// Display Info tab (parsed records and info)
+void CloneNFCState::displayInfoTab() {
     gfx->setTextSize(1);
-    gfx->setTextColor(COLOR_WHEAT_CREAM);
-    gfx->println("\nUse Up/Down to scroll");
-    gfx->println("Press Select to Clone");
-    gfx->println("Press Back to return");
+    gfx->setTextColor(COLOR_GREEN);
+    gfx->setCursor(10, 40); // Adjust cursor position as needed
+    
+    gfx->println("Tag Type: " + clonedTagType);
+    
+    // Display UID
+    String uidStr = "";
+    for (uint8_t i = 0; i < uidLength; i++) {
+        if (uid[i] < 0x10) {
+            uidStr += "0"; // Leading zero
+        }
+        uidStr += String(uid[i], HEX);
+        uidStr += " ";
+    }
+    gfx->println("UID: " + uidStr);
+
+    // Display Parsed Records
+    gfx->println("\nParsed Records:");
+    for (size_t i = 0; i < parsedRecords.size(); i++) {
+        gfx->println(String(i + 1) + ". Type: " + parsedRecords[i].type);
+        gfx->println("   Payload: " + parsedRecords[i].payload);
+    }
+
+    // Display Available Space
+    String availableSpace = "Unknown";
+    if (clonedTagType == TAG_TYPE_NTAG2XX) {
+        // Example for NTAG216
+        availableSpace = "888 bytes";
+        // Adjust based on specific NTAG2xx variant
+    }
+    gfx->println("\nAvailable Space: " + availableSpace);
+    // No need to call gfx->flush() or gfx->display()
 }
 
+// Handle scrolling in the current tab
 void CloneNFCState::handleScroll(EventType eventType) {
-    if (eventType == EVENT_UP) {
-        if (currentScrollLine > 0) {
-            currentScrollLine--;
-            displayTagInfo(clonedTagType, clonedData);
+    if (currentTab == TAB_DATA) {
+        if (eventType == EVENT_UP) {
+            if (currentScrollLine > 0) {
+                currentScrollLine--;
+                displayDataTab();
+            }
+        }
+        else if (eventType == EVENT_DOWN) {
+            if (currentScrollLine + maxVisibleLines < totalDataLines) {
+                currentScrollLine++;
+                displayDataTab();
+            }
         }
     }
-    else if (eventType == EVENT_DOWN) {
-        if (currentScrollLine + maxVisibleLines < totalDataLines) {
-            currentScrollLine++;
-            displayTagInfo(clonedTagType, clonedData);
-        }
+    else if (currentTab == TAB_INFO) {
+        // If Info tab requires scrolling, implement here
+        // For simplicity, assuming it's not scrollable
     }
 }
 
+// Clone tag data
 bool CloneNFCState::cloneTagData() {
-    displayMessage("Place target tag to clone");
-    delay(2000);
+    displayMessage("Cloning in progress...");
+    delay(1000); // Allow message to display
 
     uint8_t targetUID[7];
     uint8_t targetUIDLength = 0;
@@ -219,6 +286,7 @@ bool CloneNFCState::cloneTagData() {
     return false;
 }
 
+// Read NFC tag
 void CloneNFCState::readNFCTag() {
     Serial.println("Attempting to read NFC Tag...");
     if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
@@ -230,6 +298,36 @@ void CloneNFCState::readNFCTag() {
         clonedTagType = tagType;
         clonedData = tagData;
 
+        if (tagType == TAG_TYPE_NTAG2XX) {
+            // Read NDEF message
+            // Read raw NDEF data from NTAG2xx
+            memset(ndefData, 0, sizeof(ndefData));
+            ndefLength = 0;
+            bool success = false;
+
+            // NTAG2xx pages start from page 4
+            // Each page has 4 bytes
+            // Read pages until end of NDEF message (ME bit set in NDEF message header)
+            // For simplicity, read all pages from 4 to 38 (for NTAG216)
+            // You can optimize by stopping early if ME bit is set
+
+            for (uint8_t page = 4; page < 39; page++) {
+                uint8_t pageData[4];
+                if (nfc.ntag2xx_ReadPage(page, pageData)) {
+                    memcpy(&ndefData[ndefLength], pageData, 4);
+                    ndefLength += 4;
+                }
+                else {
+                    Serial.print("Failed to read page ");
+                    Serial.println(page);
+                    break;
+                }
+            }
+
+            // Parse NDEF records
+            parseNDEF(ndefData, ndefLength);
+        }
+
         splitDataIntoLines(tagData);
         displayTagInfo(tagType, tagData);
     }
@@ -238,12 +336,14 @@ void CloneNFCState::readNFCTag() {
     }
 }
 
+// Get Tag Type based on UID length
 String CloneNFCState::getTagType() {
     if (uidLength == 4) return TAG_TYPE_MIFARE_CLASSIC;
     if (uidLength == 7) return TAG_TYPE_NTAG2XX;
     return TAG_TYPE_UNKNOWN;
 }
 
+// Read tag data based on tag type
 String CloneNFCState::readTagData(const String& tagType) {
     if (tagType == TAG_TYPE_MIFARE_CLASSIC) {
         return readMIFAREClassic();
@@ -254,6 +354,7 @@ String CloneNFCState::readTagData(const String& tagType) {
     return "Data reading not supported for this tag type.";
 }
 
+// Read MIFARE Classic data
 String CloneNFCState::readMIFAREClassic() {
     String dataStr = "";
     uint8_t sectorCount = 16;
@@ -287,27 +388,28 @@ String CloneNFCState::readMIFAREClassic() {
     return dataStr;
 }
 
+// Read NTAG2xx data as raw bytes
 String CloneNFCState::readNTAG2xx() {
     String dataStr = "";
-    uint8_t totalPages = 39;
-    uint8_t data[4];
-
-    for (uint8_t page = 4; page < totalPages; page++) {
-        bool success = nfc.ntag2xx_ReadPage(page, data);
-        if (success) {
+    // Read all pages from 4 to 38 (for NTAG216)
+    for (uint8_t page = 4; page < 39; page++) {
+        uint8_t pageData[4];
+        if (nfc.ntag2xx_ReadPage(page, pageData)) {
             for (uint8_t i = 0; i < 4; i++) {
                 char hexByte[3];
-                sprintf(hexByte, "%02X", data[i]);
+                sprintf(hexByte, "%02X", pageData[i]);
                 dataStr += String(hexByte) + " ";
             }
             dataStr += "\n";
-        } else {
+        }
+        else {
             dataStr += "Read Failed: Page " + String(page) + "\n";
         }
     }
     return dataStr;
 }
 
+// Clone MIFARE Classic tag
 bool CloneNFCState::writeMIFAREClassic(uint8_t* targetUID, uint8_t targetUIDLength) {
     Serial.println("Cloning MIFARE Classic tag...");
     uint8_t sectorCount = 16;
@@ -350,6 +452,7 @@ bool CloneNFCState::writeMIFAREClassic(uint8_t* targetUID, uint8_t targetUIDLeng
     return true;
 }
 
+// Write and verify a MIFARE Classic block
 bool CloneNFCState::writeAndVerifyMIFAREClassicBlock(uint8_t blockAddr, uint8_t* blockData) {
     int retryCount = 3;
     while (retryCount-- > 0) {
@@ -364,64 +467,70 @@ bool CloneNFCState::writeAndVerifyMIFAREClassicBlock(uint8_t blockAddr, uint8_t*
     return false;
 }
 
+// Clone NTAG2xx tag
 bool CloneNFCState::writeNTAG2xx(uint8_t* targetUID, uint8_t targetUIDLength) {
     Serial.println("Cloning NTAG2xx tag...");
 
-    if (dataLines[0].length() < 2) {
-        displayMessage("Invalid NDEF URI Data");
+    if (parsedRecords.empty()) {
+        displayMessage("No NDEF Records to clone");
         delay(2000);
         return false;
     }
 
-    String uriLine = dataLines[0];
-    String uri = "";
-    for (uint8_t i = 0; i < uriLine.length(); i += 3) {
-        if (i + 2 > uriLine.length()) break;
-        String byteStr = uriLine.substring(i, i + 2);
-        uri += (char)strtol(byteStr.c_str(), NULL, 16);
-    }
+    // For this example, we'll write the raw NDEF data to the target tag
+    // Ensure that ndefData contains the correct NDEF message to write
+    // NTAG2xx pages start at page 4
 
-    uint8_t uriPrefix = 0x01;
-    String ndefRecord = "";
-    ndefRecord += (char)0xD1;
-    ndefRecord += (char)0x01;
-    int payloadLength = 1 + uri.length();
-    ndefRecord += (char)payloadLength;
-    ndefRecord += (char)0x55;
-    ndefRecord += (char)uriPrefix;
-    ndefRecord += uri;
+    for (size_t page = 4; page < 39 && (page - 4)*4 < ndefLength; page++) {
+        uint8_t pageData[4];
+        memset(pageData, 0, 4);
 
-    int totalBytes = ndefRecord.length();
-    int pagesNeeded = (totalBytes + 3) / 4;
-    uint8_t buffer[4 * pagesNeeded];
-    memset(buffer, 0, sizeof(buffer));
+        for (uint8_t i = 0; i < 4; i++) {
+            size_t byteIndex = (page - 4) * 4 + i;
+            if (byteIndex < ndefLength) {
+                pageData[i] = ndefData[byteIndex];
+            }
+            else {
+                pageData[i] = 0x00; // Padding
+            }
+        }
 
-    for (int i = 0; i < ndefRecord.length(); i++) {
-        buffer[i] = ndefRecord[i];
-    }
-
-    for (int page = 4; page < (4 + pagesNeeded); page++) {
-        if (!nfc.ntag2xx_WritePage(page, &buffer[(page - 4) * 4])) {
-            Serial.print("Failed to write page "); Serial.println(page);
+        if (!nfc.ntag2xx_WritePage(page, pageData)) {
+            Serial.print("Failed to write page ");
+            Serial.println(page);
             displayMessage("Clone Failed: Write Error");
             delay(2000);
+            resetNFC();
             return false;
         }
 
+        // Verify written data
         uint8_t verifyData[4];
-        if (!nfc.ntag2xx_ReadPage(page, verifyData) || memcmp(verifyData, &buffer[(page - 4) * 4], 4) != 0) {
-            Serial.print("Verification failed for page "); Serial.println(page);
+        if (!nfc.ntag2xx_ReadPage(page, verifyData)) {
+            Serial.print("Failed to read back page ");
+            Serial.println(page);
             displayMessage("Clone Failed: Verification Error");
             delay(2000);
+            resetNFC();
+            return false;
+        }
+
+        if (memcmp(pageData, verifyData, 4) != 0) {
+            Serial.print("Verification failed for page ");
+            Serial.println(page);
+            displayMessage("Clone Failed: Verification Error");
+            delay(2000);
+            resetNFC();
             return false;
         }
     }
 
-    Serial.println("NDEF URI written and verified successfully.");
     displayMessage("NTAG2xx Clone Successful!");
+    Serial.println("NTAG2xx tag cloned successfully.");
     return true;
 }
 
+// Reset NFC module
 void CloneNFCState::resetNFC() {
     Serial.println("Resetting NFC module...");
     nfc.begin();
@@ -430,6 +539,7 @@ void CloneNFCState::resetNFC() {
     displayMessage("NFC Module Reset");
 }
 
+// Split data into lines for display
 void CloneNFCState::splitDataIntoLines(const String& tagData) {
     totalDataLines = 0;
     currentScrollLine = 0;
@@ -445,6 +555,113 @@ void CloneNFCState::splitDataIntoLines(const String& tagData) {
     if (start < tagData.length() && totalDataLines < MAX_DATA_LINES) {
         dataLines[totalDataLines++] = tagData.substring(start);
     }
+}
+
+// Parse NDEF records from raw data
+void CloneNFCState::parseNDEF(const uint8_t* data, size_t length) {
+    parsedRecords.clear();
+    size_t index = 0;
+
+    while (index < length) {
+        if (index + 2 > length) break; // Not enough data
+
+        uint8_t header = data[index];
+        bool mb = header & 0x80;
+        bool me = header & 0x40;
+        bool cf = header & 0x20;
+        bool sr = header & 0x10;
+        bool il = header & 0x08;
+        uint8_t tnflen = data[index + 1];
+        size_t payloadLength = sr ? data[index + 2] : ((data[index + 2] << 8) | data[index + 3]);
+        size_t typeOffset = sr ? 3 : 4;
+
+        if (!sr && !cf) typeOffset = 4;
+
+        if (index + typeOffset + tnflen > length) break; // Prevent overflow
+
+        String type = "";
+        for (uint8_t i = 0; i < tnflen; i++) {
+            type += (char)data[index + typeOffset + i];
+        }
+
+        size_t payloadOffset = typeOffset + tnflen + (il ? 1 : 0);
+        if (payloadOffset > length) break;
+
+        const uint8_t* payload = &data[index + payloadOffset];
+        String parsedPayload = "";
+
+        if (type == "U") {
+            parsedPayload = parseURI(payload, payloadLength);
+        }
+        else if (type == "T") {
+            parsedPayload = parseText(payload, payloadLength);
+        }
+        else {
+            // Handle other types or skip
+            parsedPayload = "Unsupported Record Type";
+        }
+
+        NDEFRecord record;
+        record.type = type;
+        record.payload = parsedPayload;
+        parsedRecords.push_back(record);
+
+        // Move to the next record
+        if (sr) {
+            index += 3 + tnflen + payloadLength + (il ? 1 : 0);
+        }
+        else {
+            index += 4 + tnflen + payloadLength + (il ? 1 : 0);
+        }
+
+        if (me) break; // End of message
+    }
+}
+
+// Parse URI payload
+String CloneNFCState::parseURI(const uint8_t* payload, size_t length) {
+    if (length < 1) return "Invalid URI";
+
+    uint8_t uriIdentifier = payload[0];
+    String uri = "";
+
+    // Common URI prefixes based on RFC 3986
+    const char* uriPrefixes[] = {
+        "", "http://www.", "https://www.", "http://", "https://",
+        "tel:", "mailto:", "ftp://anonymous:anonymous@", "ftp://ftp.",
+        "ftps://", "sftp://", "smb://", "nfs://", "ftp://",
+        "dav://", "news:", "telnet://", "imap:", "rtsp://",
+        "urn:", "pop:", "sip:", "sips:", "tftp:", "btspp://",
+        "btl2cap://", "btgoep://", "tcpobex://", "irdaobex://",
+        "file://", "urn:epc:id:", "urn:epc:tag:", "urn:epc:pat:",
+        "urn:epc:raw:", "urn:epc:", "urn:nfc:"
+    };
+
+    if (uriIdentifier < sizeof(uriPrefixes)/sizeof(uriPrefixes[0])) {
+        uri += uriPrefixes[uriIdentifier];
+    }
+
+    for (size_t i = 1; i < length; i++) {
+        uri += (char)payload[i];
+    }
+
+    return uri;
+}
+
+// Parse Text payload
+String CloneNFCState::parseText(const uint8_t* payload, size_t length) {
+    if (length < 1) return "Invalid Text";
+
+    uint8_t status = payload[0];
+    bool isUTF16 = status & 0x80;
+    uint8_t langLength = status & 0x3F;
+
+    String text = "";
+    for (size_t i = 1 + langLength; i < length; i++) {
+        text += (char)payload[i];
+    }
+
+    return text;
 }
 
 } // namespace NuggetsInc

@@ -4,6 +4,7 @@
 #include "State.h"
 #include <Adafruit_PN532.h>
 #include <Arduino_GFX.h>
+#include <vector>
 
 namespace NuggetsInc {
 
@@ -12,10 +13,6 @@ namespace NuggetsInc {
 #define TAG_TYPE_MIFARE_CLASSIC "MIFARE Classic"
 #define TAG_TYPE_NTAG2XX "NTAG2xx"
 #define TAG_TYPE_UNKNOWN "Unknown"
-
-// Remove these definitions as they are already defined in Adafruit_PN532.h
-// #define MIFARE_CMD_AUTH_A 0x60
-// #define MIFARE_CMD_AUTH_B 0x61
 
 // Define colors (Replace with actual color values based on your display's color format)
 #define COLOR_ORANGE       0xFD20 // Example RGB565 value for orange
@@ -44,6 +41,9 @@ private:
     void AddToTerminalDisplay(const String& message);
     void displayTagInfo(const String& tagType, const String& tagData);
 
+    void displayDataTab();
+    void displayInfoTab();
+
     // NFC functions
     void readNFCTag();
     String getTagType();
@@ -56,20 +56,33 @@ private:
     bool writeMIFAREClassic(uint8_t* targetUID, uint8_t targetUIDLength);
     bool writeNTAG2xx(uint8_t* targetUID, uint8_t targetUIDLength);
     bool writeNDEFText(const char* text);
-    
-
 
     // Helper function to write NDEF URI
     bool writeNDEFURI(uint8_t uriIdentifier, const char* uri);
-
-
 
     // Utility functions
     void handleScroll(EventType eventType);
     void splitDataIntoLines(const String& tagData);
     void resetNFC();
     bool writeAndVerifyMIFAREClassicBlock(uint8_t blockAddr, uint8_t* blockData);
-    
+
+    // NDEF Parsing
+    struct NDEFRecord {
+        String type;
+        String payload;
+    };
+    std::vector<NDEFRecord> parsedRecords;
+
+    void parseNDEF(const uint8_t* data, size_t length);
+    String parseURI(const uint8_t* payload, size_t length);
+    String parseText(const uint8_t* payload, size_t length);
+
+    // Display tabs
+    enum DisplayTab {
+        TAB_DATA,
+        TAB_INFO
+    };
+    DisplayTab currentTab;
 
     // NFC variables
     Adafruit_PN532 nfc; // PN532 instance
@@ -81,6 +94,10 @@ private:
     // Cloning variables
     String clonedData;
     String clonedTagType;
+
+    // Raw NDEF data
+    uint8_t ndefData[256];
+    size_t ndefLength;
 
     // Scrolling variables
     static const int MAX_DATA_LINES = 50;  // Maximum number of data lines
