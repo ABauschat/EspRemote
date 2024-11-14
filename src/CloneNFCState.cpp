@@ -9,6 +9,7 @@
 #include "Config.h"
 #include <Wire.h>
 #include <Adafruit_PN532.h>
+#include "TagDataHelper.h"
 
 namespace NuggetsInc
 {
@@ -35,7 +36,6 @@ namespace NuggetsInc
     void CloneNFCState::onEnter()
     {
         displayUtils->newTerminalDisplay("Verifying NFC chip");
-        displayUtils->addToTerminalDisplay("Initializing NFC module");
 
         if (!nfcLogic->initialize())
         {
@@ -108,24 +108,37 @@ namespace NuggetsInc
 
     void CloneNFCState::readNFCTag()
     {
-        TagData tagData;
-
-        if (nfcLogic->readAndParseTagData(tagData))
+        if (nfcLogic->isTagPresent())
         {
-            tagDetected = true;
-            this->clonedTagType = tagData.tagType;
-            this->clonedData = tagData.data;
-            this->parsedRecords = tagData.ndefRecords;
-            this->availableSpace = tagData.availableSpace;
-            memcpy(this->uid, tagData.uid, tagData.uidLength);
-            this->uidLength = tagData.uidLength;
+            displayUtils->displayMessage("NFC Tag Detected: Keep steady");
+            TagDataHelper tagHelper;
+            const std::vector<uint8_t>& rawData = nfcLogic->readRawData();
+            TagDataHelper NewtagData = tagHelper.parseRawData(rawData);
 
-            splitDataIntoLines(clonedData);
-            displayUtils->displayTagInfo(clonedTagType, clonedData, parsedRecords, availableSpace, uidLength, uid, currentTab, dataLines, currentScrollLine, maxVisibleLines);
+            int validationCode = tagHelper.ValidateTagData(NewtagData);
+
+            if (validationCode != 0)
+            {
+                /*
+                String rawDataStr;
+                for (uint8_t byte : rawData) {
+                    rawDataStr += String(byte, HEX) + " ";
+                }
+                displayUtils->displayMessage("Err Code: " + String(validationCode) + " Invalid Tag " + rawDataStr);
+                return;
+                */
+
+                displayUtils->displayMessage("Un-Supported Tag");
+            }
+            
+
+            displayUtils->displayMessage("Verified NFC Tag");
+            delay(2000);
         }
         else
         {
-            displayUtils->displayMessage("No NFC Tag Detected");
+            displayUtils->displayMessage("Searching for NFC Tag");
+            delay(100);
         }
     }
 

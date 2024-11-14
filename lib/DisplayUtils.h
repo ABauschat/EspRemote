@@ -32,6 +32,7 @@ public:
 
 private:
     Arduino_GFX* gfx;
+    String previousMessage;
 };
 
 } // namespace NuggetsInc

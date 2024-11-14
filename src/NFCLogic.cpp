@@ -26,10 +26,12 @@ bool NFCLogic::initialize() {
 bool NFCLogic::isTagPresent() {
     uint8_t uid[7];  
     uint8_t uidLength = 0; 
-    return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
+
+    //Add A Single Vibrator Buzz:: Future Implementation
+    return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100);
 }
 
-const std::vector<uint8_t> &NFCLogic::readRawData()
+const std::vector<uint8_t>& NFCLogic::readRawData()
 {
     static std::vector<uint8_t> rawData;
     rawData.clear();
@@ -37,20 +39,26 @@ const std::vector<uint8_t> &NFCLogic::readRawData()
     uint8_t uid[7];
     uint8_t uidLength = 0;
 
+    // Read passive target ID
     if (!nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength))
     {
+        // Append error code for failure in reading passive target ID
+        rawData.push_back(0x01);  // Error code 0x01: Failed to read passive target ID
         return rawData;
     }
 
     uint8_t ccByte;
     uint8_t ccBytePage[4];
 
+    // Read page 3 to get CC byte
     if (!nfc.ntag2xx_ReadPage(3, ccBytePage))
     {
+        // Append error code for failure in reading page 3
+        rawData.push_back(0x02);  // Error code 0x02: Failed to read page 3
         return rawData;
     }
 
-    ccByte = ccBytePage[0];
+    ccByte = ccBytePage[2];
 
     int MaxPages = 0;
     switch (ccByte)
@@ -66,9 +74,12 @@ const std::vector<uint8_t> &NFCLogic::readRawData()
     case 0x6D:
         MaxPages = 225;
         break;
+
     default:
+        // Append error code for unknown CC byte value
+        rawData.push_back(ccBytePage[2]);
+
         return rawData;
-        break;
     }
 
     switch (uidLength)
@@ -77,23 +88,29 @@ const std::vector<uint8_t> &NFCLogic::readRawData()
         uint8_t pageData[4];
         for (uint8_t page = 0; page < MaxPages; page++)
         {
+            // Read each page of the tag
             if (!nfc.ntag2xx_ReadPage(page, pageData))
             {
+                // Append error code for failure in reading page
+                rawData.push_back(0x04);  // Error code 0x04: Failed to read page
                 return rawData;
             }
             else
             {
+                // Append successfully read data to rawData
                 rawData.insert(rawData.end(), pageData, pageData + sizeof(pageData));
             }
         }
         break;
     default:
+        // Append error code for invalid UID length
+        rawData.push_back(0x05);  // Error code 0x05: Invalid UID length
         return rawData;
-        break;
     }
 
     return rawData;
 }
+
 
 bool NFCLogic::readTag(uint8_t* uid, uint8_t* uidLength) {
     return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, uidLength);

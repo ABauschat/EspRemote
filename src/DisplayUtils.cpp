@@ -9,11 +9,15 @@ DisplayUtils::DisplayUtils(Arduino_GFX* display)
 DisplayUtils::~DisplayUtils() {}
 
 void DisplayUtils::displayMessage(const String& message) {
+    if (previousMessage == message) return;
+    
     gfx->fillScreen(COLOR_BLACK);
     gfx->setTextColor(COLOR_WHITE);
     gfx->setTextSize(2);
     gfx->setCursor(10, 60);
     gfx->println(message);
+
+    previousMessage = message;
 }
 
 void DisplayUtils::newTerminalDisplay(const String& message) {

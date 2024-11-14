@@ -1,15 +1,16 @@
-#include "TagData.h"
+#include "TagDataHelper.h"
 #include <stdexcept>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 
 namespace NuggetsInc {
 
-// Default constructor to initialize an empty TagData instance
-TagData::TagData() : tagType(0) {}
+// Default constructor to initialize an empty TagDataHelper instance
+TagDataHelper::TagDataHelper() : tagType(0) {}
 
 // Method to validate if the provided data is a supported NTAG type
-bool TagData::isValidTag(const std::vector<uint8_t>& rawData) {
+bool TagDataHelper::isValidTag(const std::vector<uint8_t>& rawData) {
     if (rawData.size() < 16) return false;
 
     // Verify manufacturer code directly in rawData
@@ -20,10 +21,10 @@ bool TagData::isValidTag(const std::vector<uint8_t>& rawData) {
 }
 
 // Determine NTAG type based on CC byte in rawData
-int TagData::determineTagType(const std::vector<uint8_t>& rawData) {
+int TagDataHelper::determineTagType(const std::vector<uint8_t>& rawData) {
     if (rawData.size() < 13) return 0;
 
-    uint8_t ccByte = rawData[12];  // Page 3, Byte 0
+    uint8_t ccByte = rawData[14];  // Page 3, Byte 0
 
     if (ccByte == 0x12) return 213;  // NTAG213
     if (ccByte == 0x3E) return 215;  // NTAG215
@@ -33,12 +34,12 @@ int TagData::determineTagType(const std::vector<uint8_t>& rawData) {
 }
 
 // Parse and populate TagData based on validated raw data
-TagData TagData::parseRawData(const std::vector<uint8_t>& rawData) {
+TagDataHelper TagDataHelper::parseRawData(const std::vector<uint8_t>& rawData) {
     // Create a new TagData object
-    TagData tagData;
+    TagDataHelper tagData;
 
     if (!tagData.isValidTag(rawData)) {
-        throw std::logic_error("Invalid or unsupported tag type");
+        return tagData;
     }
 
     // Set the tagType for struct population
@@ -144,5 +145,40 @@ TagData TagData::parseRawData(const std::vector<uint8_t>& rawData) {
     // Return the populated TagData
     return tagData;
 }
+
+int TagDataHelper::ValidateTagData(TagDataHelper tagData) {
+    // Ensure the UID and Manufacturer are correctly populated
+    if (tagData.uidAndManufacturer.UID.empty()) {
+        return 1;  // Invalid UID or Manufacturer Code
+    }
+
+    // Check for valid tagType
+    if (tagData.tagType != 213 && tagData.tagType != 215 && tagData.tagType != 216) {
+        return 2;  // Invalid tag type
+    }
+
+    // Validate Static Lock - Ensure lock status are consistent with the bytes
+    for (auto& entry : tagData.staticLock.lockStatus) {
+        if (entry.second != 0 && entry.second != 1) {
+            return 3;  // Invalid lock status
+        }
+    }
+
+    // Validate User Memory - Ensure the pages are not empty
+    if (tagData.userMemory.pages.empty()) {
+        return 4;  // User memory pages are missing
+    }
+
+    // Validate Dynamic Lock - Ensure the lock status is consistent with the dynamic lock bytes
+    for (auto& entry : tagData.dynamicLockAndConfig.lockStatus) {
+        if (entry.second != 0 && entry.second != 1) {
+            return 5;  // Invalid lock status
+        }
+    }
+
+    // All checks passed, the tag data is valid
+    return 0;
+}
+
 
 } // namespace NuggetsInc
