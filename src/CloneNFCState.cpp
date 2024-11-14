@@ -9,18 +9,15 @@
 #include "Config.h"
 #include <Wire.h>
 #include <Adafruit_PN532.h>
-#include "TagDataHelper.h"
+#include "TagData.h"
 
 namespace NuggetsInc
 {
 
     CloneNFCState::CloneNFCState()
-        : currentTab(TAB_DATA),
-          tagDetected(false),
-          currentScrollLine(0),
-          maxVisibleLines(5),
-          displayUtils(nullptr),
-          availableSpace("Unknown")
+        : tagDetected(false),
+        cloneTagData(false),
+          displayUtils(nullptr)
     {
 
         nfcLogic = new NFCLogic(PN532_IRQ, PN532_RESET);
@@ -31,6 +28,7 @@ namespace NuggetsInc
     {
         delete nfcLogic;
         delete displayUtils;
+        delete currentTagData;
     }
 
     void CloneNFCState::onEnter()
@@ -71,30 +69,13 @@ namespace NuggetsInc
             }
             else if (event.type == EVENT_LEFT || event.type == EVENT_RIGHT)
             {
-                if (tagDetected)
-                {
-                    currentTab = (currentTab == TAB_DATA) ? TAB_INFO : TAB_DATA;
-                    displayUtils->displayTagInfo(clonedTagType, clonedData, parsedRecords, availableSpace, uidLength, uid, currentTab, dataLines, currentScrollLine, maxVisibleLines);
-                }
             }
 
             else if (event.type == EVENT_SELECT)
             {
                 if (tagDetected)
                 {
-                    displayUtils->displayMessage("Cloning in progress...");
-                    delay(1000);
-
-                    if (cloneTagData())
-                    {
-                        displayUtils->displayMessage("Clone Successful!");
-                    }
-                    else
-                    {
-                        displayUtils->displayMessage("Clone Failed!");
-                    }
-                    delay(2000);
-                    Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+                    
                     return;
                 }
             }
@@ -103,6 +84,10 @@ namespace NuggetsInc
         if (!tagDetected)
         {
             readNFCTag();
+        } else if (!cloneTagData) {
+            //Display Tag Information and ask for confirmation
+        } else if (cloneTagData) {
+            //Write Data to New Tag
         }
     }
 
@@ -111,29 +96,26 @@ namespace NuggetsInc
         if (nfcLogic->isTagPresent())
         {
             displayUtils->displayMessage("NFC Tag Detected: Keep steady");
-            TagDataHelper tagHelper;
-            const std::vector<uint8_t>& rawData = nfcLogic->readRawData();
-            TagDataHelper NewtagData = tagHelper.parseRawData(rawData);
 
-            int validationCode = tagHelper.ValidateTagData(NewtagData);
+            TagData tag;
+            const std::vector<uint8_t> &rawData = nfcLogic->readRawData();
+            TagData NewtagData = tag.parseRawData(rawData);
+
+            int validationCode = tag.ValidateTagData(NewtagData);
 
             if (validationCode != 0)
             {
-                /*
-                String rawDataStr;
-                for (uint8_t byte : rawData) {
-                    rawDataStr += String(byte, HEX) + " ";
-                }
-                displayUtils->displayMessage("Err Code: " + String(validationCode) + " Invalid Tag " + rawDataStr);
-                return;
-                */
-
+                // Play A Long Vibration to indicate an error
                 displayUtils->displayMessage("Un-Supported Tag");
+                delay(1500);
+            } else {
+                currentTagData = new TagData(NewtagData);
             }
-            
 
             displayUtils->displayMessage("Verified NFC Tag");
-            delay(2000);
+            delay(1500);
+
+            tagDetected = true;
         }
         else
         {
@@ -142,61 +124,14 @@ namespace NuggetsInc
         }
     }
 
-    bool CloneNFCState::cloneTagData()
+    bool CloneNFCState::cloneTag()
     {
-        if (!nfcLogic->validateAndCloneTag(clonedTagType, dataLines))
-        {
-            displayUtils->displayMessage("Clone Failed!");
-            delay(2000);
-            return false;
-        }
 
         return true;
     }
 
     void CloneNFCState::handleScroll(EventType eventType)
     {
-        if (currentTab == TAB_DATA)
-        {
-            if (eventType == EVENT_UP)
-            {
-                if (currentScrollLine > 0)
-                {
-                    currentScrollLine--;
-                    displayUtils->displayDataTab(dataLines, currentScrollLine, maxVisibleLines);
-                }
-            }
-            else if (eventType == EVENT_DOWN)
-            {
-                if (currentScrollLine + maxVisibleLines < dataLines.size())
-                {
-                    currentScrollLine++;
-                    displayUtils->displayDataTab(dataLines, currentScrollLine, maxVisibleLines);
-                }
-            }
-        }
-        else if (currentTab == TAB_INFO)
-        {
-        }
-    }
-
-    void CloneNFCState::splitDataIntoLines(const String &tagData)
-    {
-        dataLines.clear();
-        currentScrollLine = 0;
-
-        int start = 0;
-        int end = tagData.indexOf('\n', start);
-        while (end != -1)
-        {
-            dataLines.push_back(tagData.substring(start, end));
-            start = end + 1;
-            end = tagData.indexOf('\n', start);
-        }
-        if (start < tagData.length())
-        {
-            dataLines.push_back(tagData.substring(start));
-        }
     }
 
 } // namespace NuggetsInc

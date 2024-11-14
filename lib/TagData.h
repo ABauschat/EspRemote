@@ -1,6 +1,6 @@
-//TagDataHelper.h
-#ifndef TAGDATAHELPER_H
-#define TAGDATAHELPER_H
+//TagData.h
+#ifndef TAGDATA_H
+#define TAGDATA_H
 
 #include <array>
 #include <map>
@@ -10,18 +10,21 @@
 
 namespace NuggetsInc {
 
-class TagDataHelper {
+class TagData {
 public:
     // Default constructor
-    TagDataHelper();
+    TagData();
+
+    // Clone Constructor
+    TagData(const TagData& other);
 
     // Method to validate if the provided data is a supported NTAG type
     bool isValidTag(const std::vector<uint8_t>& rawData);
 
-    // Method to parse and populate TagData based on raw data
-    static TagDataHelper parseRawData(const std::vector<uint8_t>& rawData);
+    // Method to parse and populate NFCTagData based on raw data
+    static TagData parseRawData(const std::vector<uint8_t>& rawData);
 
-    int ValidateTagData(TagDataHelper tagData);
+    int ValidateTagData(TagData NFCTagData);
 
     // Data sections based on NTAG structure
     struct UIDAndManufacturer {
@@ -72,4 +75,4 @@ private:
 
 } // namespace NuggetsInc
 
-#endif // TAGDATAHELPER_H 
+#endif // TAGDATA_H 

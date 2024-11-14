@@ -26,9 +26,6 @@ public:
     void displayMessage(const String& message);
     void newTerminalDisplay(const String& message);
     void addToTerminalDisplay(const String& message);
-    void displayTagInfo(const String& tagType, const String& tagData, const std::vector<NDEFRecord>& parsedRecords, const String& availableSpace, int uidLength, uint8_t* uid, DisplayTab currentTab, const std::vector<String>& dataLines, int currentScrollLine, int maxVisibleLines);
-    void displayDataTab(const std::vector<String>& dataLines, int currentScrollLine, int maxVisibleLines);
-    void displayInfoTab(const String& tagType, const std::vector<NDEFRecord>& parsedRecords, const String& availableSpace, int uidLength, uint8_t* uid);
 
 private:
     Arduino_GFX* gfx;

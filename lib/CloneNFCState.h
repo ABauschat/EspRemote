@@ -8,6 +8,7 @@
 #include "NFCLogic.h"
 #include "DisplayUtils.h"
 #include "Colors.h"
+#include "TagData.h"
 
 namespace NuggetsInc {
 
@@ -23,31 +24,13 @@ public:
 private:
     // NFC functions
     void readNFCTag();
-    bool cloneTagData();
-
-    // Utility functions
+    bool cloneTag();
     void handleScroll(EventType eventType);
-    void splitDataIntoLines(const String& tagData);
-    void resetNFC();
-
-    // Variables
-    DisplayTab currentTab;
     bool tagDetected;
-    std::vector<String> dataLines; // Arduino's String
-    int currentScrollLine;
-    int maxVisibleLines;
-    std::vector<NDEFRecord> parsedRecords;
-    String availableSpace;
-
-    // NFC variables
+    bool cloneTagData;
     NFCLogic* nfcLogic;
-    uint8_t uid[7];
-    uint8_t uidLength;
-    String clonedTagType;
-    String clonedData;
-
-    // Display
     DisplayUtils* displayUtils;
+    TagData* currentTagData;
 };
 
 } // namespace NuggetsInc
