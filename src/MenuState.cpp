@@ -30,7 +30,7 @@ void MenuState::onEnter() {
 }
 
 void MenuState::onExit() {
-    // Any necessary cleanup can be done here
+
 }
 
 void MenuState::update() {
@@ -55,7 +55,6 @@ void MenuState::update() {
                 executeSelection();
                 break;
             case EVENT_BACK:
-                // Do nothing in the main menu
                 break;
             default:
                 break;
@@ -70,8 +69,7 @@ void MenuState::displayMenu() {
 
     for (int i = 0; i < menuItems; i++) {
         if (i == menuIndex) {
-            // Highlight the selected menu item
-            gfx->setTextColor(COLOR_RED);
+            gfx->setTextColor(COLOR_ORANGE);
         }
         else {
             gfx->setTextColor(COLOR_WHITE);

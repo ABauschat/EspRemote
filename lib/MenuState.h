@@ -26,7 +26,6 @@ private:
     String menu[menuItems];
     int menuIndex;
 
-    // Display utilities
     DisplayUtils* displayUtils;
 };
 
