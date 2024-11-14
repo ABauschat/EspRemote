@@ -47,6 +47,9 @@ public:
     bool validateAndCloneTag(const String& clonedTagType, std::vector<String>& dataLines);
 
     std::vector<NDEFRecord> parseNDEF(const uint8_t* data, size_t length);
+    bool isTagPresent();
+    const std::vector<uint8_t>& readRawData();
+
 
 private:
     Adafruit_PN532 nfc;

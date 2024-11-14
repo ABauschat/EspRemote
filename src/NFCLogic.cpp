@@ -23,6 +23,78 @@ bool NFCLogic::initialize() {
     return true;
 }
 
+bool NFCLogic::isTagPresent() {
+    uint8_t uid[7];  
+    uint8_t uidLength = 0; 
+    return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
+}
+
+const std::vector<uint8_t> &NFCLogic::readRawData()
+{
+    static std::vector<uint8_t> rawData;
+    rawData.clear();
+
+    uint8_t uid[7];
+    uint8_t uidLength = 0;
+
+    if (!nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength))
+    {
+        return rawData;
+    }
+
+    uint8_t ccByte;
+    uint8_t ccBytePage[4];
+
+    if (!nfc.ntag2xx_ReadPage(3, ccBytePage))
+    {
+        return rawData;
+    }
+
+    ccByte = ccBytePage[0];
+
+    int MaxPages = 0;
+    switch (ccByte)
+    {
+    case 0x12:
+        MaxPages = 45;
+        break;
+
+    case 0x3E:
+        MaxPages = 135;
+        break;
+
+    case 0x6D:
+        MaxPages = 225;
+        break;
+    default:
+        return rawData;
+        break;
+    }
+
+    switch (uidLength)
+    {
+    case 7:
+        uint8_t pageData[4];
+        for (uint8_t page = 0; page < MaxPages; page++)
+        {
+            if (!nfc.ntag2xx_ReadPage(page, pageData))
+            {
+                return rawData;
+            }
+            else
+            {
+                rawData.insert(rawData.end(), pageData, pageData + sizeof(pageData));
+            }
+        }
+        break;
+    default:
+        return rawData;
+        break;
+    }
+
+    return rawData;
+}
+
 bool NFCLogic::readTag(uint8_t* uid, uint8_t* uidLength) {
     return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, uidLength);
 }

@@ -46,7 +46,6 @@ namespace NuggetsInc
         }
 
         displayUtils->addToTerminalDisplay("NFC module Found");
-        displayUtils->displayMessage("Ready to read NFC tag");
         tagDetected = false;
     }
 
