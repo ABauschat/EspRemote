@@ -30,7 +30,7 @@ private:
     bool tagDetected;
     bool cloneTagData;
     bool displayNeedsRefresh;
-    Tab* currentTabWindow;
+    Tab currentTabWindow;
     NFCLogic* nfcLogic;
     DisplayUtils* displayUtils;
     TagData* currentTagData;

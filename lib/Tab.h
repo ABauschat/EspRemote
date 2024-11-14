@@ -1,3 +1,4 @@
+// Tab.h
 #ifndef TAB_H
 #define TAB_H
 
@@ -36,6 +37,7 @@ public:
     void scrollDown();
     void switchTab();
     void selectTab();  // Simply returns the selected tab's name
+    void RemoveAllLines();
 
     // Getters
     String getName() const;
@@ -59,6 +61,9 @@ private:
 
     // Method to calculate line height dynamically based on style
     int calculateLineHeight();
+
+    // Helper method to clamp currentLine within valid range
+    void clampCurrentLine();
 };
 
 } // namespace NuggetsInc
