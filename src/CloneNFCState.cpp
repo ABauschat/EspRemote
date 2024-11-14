@@ -35,6 +35,7 @@ namespace NuggetsInc
     void CloneNFCState::onEnter()
     {
         displayUtils->newTerminalDisplay("Verifying NFC chip");
+        displayUtils->addToTerminalDisplay("Initializing NFC module");
 
         if (!nfcLogic->initialize())
         {
@@ -44,7 +45,7 @@ namespace NuggetsInc
             return;
         }
 
-        displayUtils->addToTerminalDisplay("NFC module initialized");
+        displayUtils->addToTerminalDisplay("NFC module Found");
         displayUtils->displayMessage("Ready to read NFC tag");
         tagDetected = false;
     }
