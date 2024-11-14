@@ -10,13 +10,15 @@
 #include <Wire.h>
 #include <Adafruit_PN532.h>
 #include "TagData.h"
+#include "Tab.h"
 
 namespace NuggetsInc
 {
 
     CloneNFCState::CloneNFCState()
         : tagDetected(false),
-        cloneTagData(false),
+          cloneTagData(false),
+        displayNeedsRefresh(false),
           displayUtils(nullptr)
     {
 
@@ -70,13 +72,17 @@ namespace NuggetsInc
             else if (event.type == EVENT_LEFT || event.type == EVENT_RIGHT)
             {
             }
-
             else if (event.type == EVENT_SELECT)
             {
-                if (tagDetected)
+                if (tagDetected && !cloneTagData)
                 {
-                    
-                    return;
+                    // Display tag information and ask for confirmation
+                }
+                else if (tagDetected && cloneTagData)
+                {
+                    // Proceed to clone the tag data
+                    displayUtils->displayMessage("Cloning Tag Data...");
+                    // Add your cloning logic here
                 }
             }
         }
@@ -84,11 +90,54 @@ namespace NuggetsInc
         if (!tagDetected)
         {
             readNFCTag();
-        } else if (!cloneTagData) {
-            //Display Tag Information and ask for confirmation
-        } else if (cloneTagData) {
-            //Write Data to New Tag
         }
+        else if (!cloneTagData && displayNeedsRefresh)
+        {
+            displayTagInformation();
+        }
+        else if (cloneTagData)
+        {
+            displayUtils->displayMessage("Cloning Tag Data...");
+        }
+    }
+
+    void CloneNFCState::displayTagInformation()
+    {
+        if (currentTagData == nullptr)
+        {
+            return;
+        }
+
+        // Create a new Tab for displaying the tag information
+        DisplayArea tabArea = {10, 10, 240, 160}; // Example area, adjust based on screen
+        Tab tagInfoTab("Tag Info", tabArea, Device::getInstance().getDisplay());
+
+        // Set tab style (e.g., numbered list)
+        tagInfoTab.setStyle(STYLE_NUMBERED);
+
+        // Add UID to the tab
+        tagInfoTab.addLine("UID: " + String(currentTagData->interpretations.UIDHex.c_str()));
+
+        // Add Manufacturer to the tab
+        tagInfoTab.addLine("Manufacturer: " + String(currentTagData->interpretations.manufacturerHex.c_str()));
+
+        // Show tag type based on the tagType value
+        std::string tagType = (currentTagData->tagType == 213) ? "NTAG213" : (currentTagData->tagType == 215) ? "NTAG215"
+                                                                                                              : "NTAG216";
+        tagInfoTab.addLine("Tag Type: " + String(tagType.c_str()));
+
+        // Show memory details
+        tagInfoTab.addLine("Total User Memory: " + String(std::to_string(currentTagData->userMemory.totalUserMemoryBytes).c_str()) + " bytes");
+
+        // Add the confirmation message at the end
+        tagInfoTab.addLine("Press SELECT to Confirm, BACK to Cancel");
+
+        // Refresh the tab to display the content
+        tagInfoTab.refreshTab();
+
+         currentTabWindow = &tagInfoTab;
+
+        displayNeedsRefresh = false;
     }
 
     void CloneNFCState::readNFCTag()
@@ -108,14 +157,17 @@ namespace NuggetsInc
                 // Play A Long Vibration to indicate an error
                 displayUtils->displayMessage("Un-Supported Tag");
                 delay(1500);
-            } else {
-                currentTagData = new TagData(NewtagData);
+            }
+            else
+            {
+                currentTagData = new TagData(NewtagData); // Save the tag data for later use
             }
 
             displayUtils->displayMessage("Verified NFC Tag");
             delay(1500);
 
             tagDetected = true;
+            displayNeedsRefresh = true;
         }
         else
         {
@@ -132,6 +184,16 @@ namespace NuggetsInc
 
     void CloneNFCState::handleScroll(EventType eventType)
     {
+        if (eventType == EVENT_UP)
+        {
+            currentTabWindow->scrollUp();
+            displayNeedsRefresh = true;
+        }
+        else if (eventType == EVENT_DOWN)
+        {
+            currentTabWindow->scrollDown();
+            displayNeedsRefresh = true;
+        }
     }
 
 } // namespace NuggetsInc

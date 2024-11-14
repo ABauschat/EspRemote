@@ -9,6 +9,7 @@
 #include "DisplayUtils.h"
 #include "Colors.h"
 #include "TagData.h"
+#include "Tab.h"
 
 namespace NuggetsInc {
 
@@ -28,9 +29,12 @@ private:
     void handleScroll(EventType eventType);
     bool tagDetected;
     bool cloneTagData;
+    bool displayNeedsRefresh;
+    Tab* currentTabWindow;
     NFCLogic* nfcLogic;
     DisplayUtils* displayUtils;
     TagData* currentTagData;
+    void displayTagInformation();
 };
 
 } // namespace NuggetsInc

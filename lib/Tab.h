@@ -36,7 +36,7 @@ public:
     void scrollDown();
     void switchTab();
     void selectTab();  // Simply returns the selected tab's name
-    
+
     // Getters
     String getName() const;
     DisplayArea getArea() const;
@@ -50,6 +50,15 @@ private:
     LineStyle style;             // Line style for the tab (none, numbered, bullets)
     int currentLine;             // Current visible line for scrolling
     Arduino_GFX* gfx;            // Graphics display pointer
+    bool tabNeedsRefresh = true; // Flag to indicate if the tab content needs to be refreshed
+
+    std::vector<String> wrappedLinesCache; // Cached wrapped lines
+
+    // Method for wrapping text based on width and prefix
+    std::vector<String> wrapText(String text, int maxWidth, String prefix = "");
+
+    // Method to calculate line height dynamically based on style
+    int calculateLineHeight();
 };
 
 } // namespace NuggetsInc
