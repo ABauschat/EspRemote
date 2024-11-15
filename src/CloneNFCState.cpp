@@ -28,11 +28,12 @@ namespace NuggetsInc
         Arduino_GFX *display = Device::getInstance().getDisplay();
 
         // Define the virtual display area
-        DisplayArea tabArea = {0, 0, 536, 150}; // Your specified area
-
-        tabs.emplace_back("Info", tabArea, display);
+        DisplayArea tabArea = {0, 0, 536, 220}; // Your specified area
+        
+        tabs.emplace_back("Options", tabArea, display);
         tabs.emplace_back("Raw Data", tabArea, display);
         tabs.emplace_back("ASCII", tabArea, display);
+        tabs.emplace_back("Info", tabArea, display);
     }
 
     CloneNFCState::~CloneNFCState()
@@ -110,22 +111,31 @@ namespace NuggetsInc
             tab.RemoveAllLines();
         }
 
+        // Populate the "Options" tab
+        tabs[0].setStyle(STYLE_NONE);
+        tabs[0].addLine("Press Select To Initiate Cloning");
+        tabs[0].addLine("Press Left/Right To Navigate Tabs");
+        tabs[0].addLine("Press Up/Down To Scroll");
+        tabs[0].addLine("Press Back To Return To Menu");
+
+
+
         // Populate the "Info" tab
-        tabs[0].setStyle(STYLE_NUMBERED);
-        tabs[0].addLine("UID: " + String(currentTagData->interpretations.UIDHex.c_str()));
-        tabs[0].addLine("Manufacturer: " + String(currentTagData->interpretations.manufacturerHex.c_str()));
+        tabs[3].setStyle(STYLE_NUMBERED);
+        tabs[3].addLine("UID: " + String(currentTagData->interpretations.UIDHex.c_str()));
+        tabs[3].addLine("Manufacturer: " + String(currentTagData->interpretations.manufacturerHex.c_str()));
         std::string tagType = (currentTagData->tagType == 213) ? "NTAG213" : (currentTagData->tagType == 215) ? "NTAG215"
                                                                                                               : "NTAG216";
-        tabs[0].addLine("Tag Type: " + String(tagType.c_str()));
-        tabs[0].addLine("Total User Memory: " + String(std::to_string(currentTagData->userMemory.totalUserMemoryBytes).c_str()) + " bytes");
+        tabs[3].addLine("Tag Type: " + String(tagType.c_str()));
+        tabs[3].addLine("Total User Memory: " + String(std::to_string(currentTagData->userMemory.totalUserMemoryBytes).c_str()) + " bytes");
 
         // **Add the NDEF Records to the Info tab**
-        tabs[0].addLine("NDEF Records:");
+        tabs[3].addLine("NDEF Records:");
         for (size_t i = 0; i < currentTagData->records.size(); ++i)
         {
             const TagData::Record &record = currentTagData->records[i];
-            tabs[0].addLine("Record " + String(i + 1) + ":");
-            tabs[0].addLine("  Type: " + String(record.type.c_str()));
+            tabs[3].addLine("Record " + String(i + 1) + ":");
+            tabs[3].addLine("  Type: " + String(record.type.c_str()));
 
             // Convert payload to a printable string
             String payloadStr = "";
@@ -136,7 +146,7 @@ namespace NuggetsInc
                 else
                     payloadStr += '.'; // Non-printable character placeholder
             }
-            tabs[0].addLine("  Payload: " + payloadStr);
+            tabs[3].addLine("  Payload: " + payloadStr);
         }
 
         // Populate the "Raw Data" tab with hex data formatted 4 bytes at a time
