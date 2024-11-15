@@ -264,6 +264,7 @@ namespace NuggetsInc
                 // Play a long vibration to indicate an error
                 displayUtils->displayMessage("Un-Supported Tag");
                 delay(1500);
+                return;
             }
             else
             {
