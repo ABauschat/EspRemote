@@ -113,10 +113,10 @@ namespace NuggetsInc
 
         // Populate the "Options" tab
         tabs[0].setStyle(STYLE_NONE);
-        tabs[0].addLine("Press Select To Initiate Cloning");
-        tabs[0].addLine("Press Left/Right To Navigate Tabs");
-        tabs[0].addLine("Press Up/Down To Scroll");
-        tabs[0].addLine("Press Back To Return To Menu");
+        tabs[0].addLine("Select To Initiate Cloning");
+        tabs[0].addLine("Left/Right To Navigate Tabs");
+        tabs[0].addLine("Up/Down To Scroll");
+        tabs[0].addLine("Back To Return To Menu");
 
 
 
