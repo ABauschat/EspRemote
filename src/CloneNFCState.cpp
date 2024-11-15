@@ -1,4 +1,3 @@
-// CloneNFCState.cpp
 #include "CloneNFCState.h"
 #include "Device.h"
 #include "EventManager.h"
@@ -14,16 +13,26 @@
 
 namespace NuggetsInc
 {
-
     CloneNFCState::CloneNFCState()
         : tagDetected(false),
           cloneTagData(false),
           displayNeedsRefresh(false),
-          currentTabWindow("Tag Info", {10, 10, 240, 160}, Device::getInstance().getDisplay()), // Initialize Tab
-          displayUtils(nullptr)
+          currentTabIndex(0),
+          displayUtils(nullptr),
+          currentTabWindow("Default", DisplayArea{0, 0, 0, 0}, Device::getInstance().getDisplay())
     {
         nfcLogic = new NFCLogic(PN532_IRQ, PN532_RESET);
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
+
+        // Initialize tabs with proper display areas
+        Arduino_GFX *display = Device::getInstance().getDisplay();
+
+        // Define the virtual display area
+        DisplayArea tabArea = {10, 10, 250, 150}; // Your specified area
+
+        tabs.emplace_back("Info", tabArea, display);
+        tabs.emplace_back("Raw Data", tabArea, display);
+        tabs.emplace_back("ASCII", tabArea, display);
     }
 
     CloneNFCState::~CloneNFCState()
@@ -71,15 +80,7 @@ namespace NuggetsInc
             }
             else if (event.type == EVENT_SELECT)
             {
-                if (tagDetected && !cloneTagData)
-                {
-                    cloneTagData = true;
-                    displayNeedsRefresh = true;
-                }
-                else if (tagDetected && cloneTagData)
-                {
-                    displayUtils->displayMessage("Cloning Tag Data...");
-                }
+                // Implement selection logic if needed
             }
         }
 
@@ -91,44 +92,72 @@ namespace NuggetsInc
         {
             displayTagInformation();
         }
-        else if (cloneTagData)
-        {
-            displayUtils->displayMessage("Cloning Tag Data...");
-        }
     }
 
-    void CloneNFCState::displayTagInformation()
+    void CloneNFCState::populateTabs()
     {
         if (currentTagData == nullptr)
         {
             return;
         }
 
-        // Clear existing lines
-        currentTabWindow.RemoveAllLines();
+        // Clear all tabs' lines
+        for (auto &tab : tabs)
+        {
+            tab.RemoveAllLines();
+        }
 
-        // Set tab style (e.g., numbered list)
-        currentTabWindow.setStyle(STYLE_NUMBERED);
-
-        // Add UID to the tab
-        currentTabWindow.addLine("UID: " + String(currentTagData->interpretations.UIDHex.c_str()));
-
-        // Add Manufacturer to the tab
-        currentTabWindow.addLine("Manufacturer: " + String(currentTagData->interpretations.manufacturerHex.c_str()));
-
-        // Show tag type based on the tagType value
+        // Populate the "Info" tab (unchanged)
+        tabs[0].setStyle(STYLE_NUMBERED);
+        tabs[0].addLine("UID: " + String(currentTagData->interpretations.UIDHex.c_str()));
+        tabs[0].addLine("Manufacturer: " + String(currentTagData->interpretations.manufacturerHex.c_str()));
         std::string tagType = (currentTagData->tagType == 213) ? "NTAG213" : (currentTagData->tagType == 215) ? "NTAG215"
                                                                                                               : "NTAG216";
-        currentTabWindow.addLine("Tag Type: " + String(tagType.c_str()));
+        tabs[0].addLine("Tag Type: " + String(tagType.c_str()));
+        tabs[0].addLine("Total User Memory: " + String(std::to_string(currentTagData->userMemory.totalUserMemoryBytes).c_str()) + " bytes");
 
-        // Show memory details
-        currentTabWindow.addLine("Total User Memory: " + String(std::to_string(currentTagData->userMemory.totalUserMemoryBytes).c_str()) + " bytes");
+        // Populate the "Raw Data" tab with hex data formatted 4 bytes at a time
+        tabs[1].setStyle(STYLE_NUMBERED); // Set line style to numbered
+        const std::vector<uint8_t> &rawData = currentTagData->rawData;
+        for (size_t i = 0; i < rawData.size(); i += 4)
+        {
+            String line = "";
+            for (size_t j = i; j < i + 4 && j < rawData.size(); ++j)
+            {
+                if (rawData[j] < 16)
+                    line += "0"; // Add leading zero for single-digit hex values
+                line += String(rawData[j], HEX) + " ";
+            }
+            tabs[1].addLine(line);
+        }
 
-        // Add the confirmation message at the end
-        currentTabWindow.addLine("Press SELECT to Confirm, BACK to Cancel");
+        // Populate the "ASCII" tab with ASCII data formatted 4 bytes at a time
+        tabs[2].setStyle(STYLE_NUMBERED); // Set line style to numbered
+        for (size_t i = 0; i < rawData.size(); i += 4)
+        {
+            String asciiLine = "";
+            for (size_t j = i; j < i + 4 && j < rawData.size(); ++j)
+            {
+                // ASCII representation
+                if (rawData[j] >= 32 && rawData[j] <= 126)
+                    asciiLine += char(rawData[j]);
+                else
+                    asciiLine += '.'; // Non-printable character placeholder
+            }
+            tabs[2].addLine(asciiLine);
+        }
+    }
 
-        // Refresh the tab to display the content
-        currentTabWindow.refreshTab();
+    void CloneNFCState::displayTagInformation()
+    {
+        // Get the display instance
+        Arduino_GFX *display = Device::getInstance().getDisplay();
+
+        // Refresh the current tab to display the content
+        tabs[currentTabIndex].refreshTab();
+
+        // Draw the tab headers
+        tabs[currentTabIndex].DrawTabHeaders(tabs, currentTabIndex);
 
         displayNeedsRefresh = false;
     }
@@ -144,16 +173,28 @@ namespace NuggetsInc
         switch (eventType)
         {
         case EVENT_UP:
-            currentTabWindow.scrollUp();
+            tabs[currentTabIndex].scrollUp();
             displayNeedsRefresh = true;
             break;
         case EVENT_DOWN:
-            currentTabWindow.scrollDown();
+            tabs[currentTabIndex].scrollDown();
             displayNeedsRefresh = true;
             break;
         case EVENT_LEFT:
+            if (currentTabIndex > 0)
+            {
+                currentTabIndex--;
+                tabs[currentTabIndex].setNeedsRefresh(true); // Add this line
+                displayNeedsRefresh = true;
+            }
             break;
         case EVENT_RIGHT:
+            if (currentTabIndex < tabs.size() - 1)
+            {
+                currentTabIndex++;
+                tabs[currentTabIndex].setNeedsRefresh(true); // Add this line
+                displayNeedsRefresh = true;
+            }
             break;
         default:
             break;
@@ -174,13 +215,15 @@ namespace NuggetsInc
 
             if (validationCode != 0)
             {
-                // Play A Long Vibration to indicate an error
+                // Play a long vibration to indicate an error
                 displayUtils->displayMessage("Un-Supported Tag");
                 delay(1500);
             }
             else
             {
                 currentTagData = new TagData(NewtagData);
+                // Populate the tabs once after tag is read
+                populateTabs();
             }
 
             displayUtils->displayMessage("Verified NFC Tag");

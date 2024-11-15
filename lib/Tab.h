@@ -1,4 +1,3 @@
-// Tab.h
 #ifndef TAB_H
 #define TAB_H
 
@@ -11,9 +10,9 @@
 namespace NuggetsInc {
 
 enum LineStyle {
-    STYLE_NONE,      // Just display lines as they are
-    STYLE_NUMBERED,  // 1, 2, 3, ...
-    STYLE_BULLETS    // •, •, •, ...
+    STYLE_NONE,      
+    STYLE_NUMBERED, 
+    STYLE_BULLETS  
 };
 
 struct DisplayArea {
@@ -25,45 +24,38 @@ struct DisplayArea {
 
 class Tab {
 public:
-    // Constructor with gfx injection
     Tab(String name, DisplayArea area, Arduino_GFX* display);
 
-    // Methods to handle tab content and interactions
     void setStyle(LineStyle newStyle);
     void addLine(String line);
+    void RemoveAllLines();
     void clearTab();
     void refreshTab();
     void scrollUp();
     void scrollDown();
-    void switchTab();
-    void selectTab();  // Simply returns the selected tab's name
-    void RemoveAllLines();
+    void DrawTabHeaders(const std::vector<Tab>& tabs, int currentIndex);
 
-    // Getters
     String getName() const;
     DisplayArea getArea() const;
     LineStyle getStyle() const;
     std::vector<String> getLines() const;
+    String getTitle() const;
+    void setNeedsRefresh(bool needsRefresh);
 
 private:
     String name;                 // Tab name
     DisplayArea area;            // Area on the screen where this tab is displayed
-    std::vector<String> lines;   // Lines of data/content in this tab
+    std::vector<String> lines;   // Original lines added to the tab
     LineStyle style;             // Line style for the tab (none, numbered, bullets)
-    int currentLine;             // Current visible line for scrolling
+    int scrollOffset;            // Scroll offset for scrolling through wrapped lines
     Arduino_GFX* gfx;            // Graphics display pointer
     bool tabNeedsRefresh = true; // Flag to indicate if the tab content needs to be refreshed
-
     std::vector<String> wrappedLinesCache; // Cached wrapped lines
+    int maxVisibleLines;         // Maximum number of lines that can be displayed at once
 
-    // Method for wrapping text based on width and prefix
     std::vector<String> wrapText(String text, int maxWidth, String prefix = "");
-
-    // Method to calculate line height dynamically based on style
     int calculateLineHeight();
-
-    // Helper method to clamp currentLine within valid range
-    void clampCurrentLine();
+    void clampScrollOffset();
 };
 
 } // namespace NuggetsInc

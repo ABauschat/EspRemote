@@ -1,246 +1,221 @@
-// Tab.cpp
 #include "Tab.h"
 
-namespace NuggetsInc {
+namespace NuggetsInc
+{
 
-Tab::Tab(String name, DisplayArea area, Arduino_GFX* display)
-    : name(name), area(area), style(STYLE_NONE), currentLine(0), gfx(display) {}
-
-void Tab::setStyle(LineStyle newStyle) {
-    style = newStyle;
-    tabNeedsRefresh = true; // Mark for refresh when style changes
-}
-
-void Tab::addLine(String line) {
-    lines.push_back(line);
-    tabNeedsRefresh = true; // Mark for refresh when a new line is added
-}
-
-void Tab::RemoveAllLines() {
-    lines.clear();
-    tabNeedsRefresh = true; // Mark for refresh when all lines are removed
-}
-
-void Tab::clearTab() {
-    // Clear the display area by filling it with red (or any background color)
-    gfx->fillRect(area.x, area.y, area.width, area.height, COLOR_RED);
-}
-
-int Tab::calculateLineHeight() {
-    // Adjust line height based on the style (e.g., numbered or bullets)
-    if (style == STYLE_NUMBERED || style == STYLE_BULLETS) {
-        return 24;  // Increase line height for numbered/bullet lines
-    }
-    return 20;  // Default line height
-}
-
-std::vector<String> Tab::wrapText(String text, int maxWidth, String prefix) {
-    std::vector<String> wrappedLines;
-    String currentLineStr = prefix;
-    int16_t x1, y1;
-    uint16_t width, height;
-
-    // Split text into words
-    std::vector<String> words;
-    int start = 0;
-    int end = 0;
-    while (end <= text.length()) {
-        if (end < text.length() && text[end] != ' ') {
-            end++;
-        }
-        else {
-            if (end > start) {
-                String word = text.substring(start, end);
-                words.push_back(word);
-            }
-            start = end + 1;
-            end++;
-        }
+    Tab::Tab(String name, DisplayArea area, Arduino_GFX *display)
+        : name(name), area(area), style(STYLE_NONE), scrollOffset(0), gfx(display)
+    {
+        maxVisibleLines = (area.height - 20) / calculateLineHeight(); // Subtract tab header height
     }
 
-    for (size_t i = 0; i < words.size(); ++i) {
-        String word = words[i];
-        String trialLine = currentLineStr;
-
-        // Determine if a space is needed
-        if (currentLineStr.length() > (prefix.length() > 0 ? prefix.length() : 0)) {
-            trialLine += " ";
-        }
-        trialLine += word;
-
-        gfx->getTextBounds(trialLine, 0, 0, &x1, &y1, &width, &height);
-
-        if (width <= maxWidth) {
-            // Add the word to the current line
-            if (currentLineStr.length() > (prefix.length() > 0 ? prefix.length() : 0)) {
-                currentLineStr += " ";
-            }
-            currentLineStr += word;
-        }
-        else {
-            if (currentLineStr.length() > (prefix.length() > 0 ? prefix.length() : 0)) {
-                // Push the current line and start a new one
-                wrappedLines.push_back(currentLineStr);
-                currentLineStr = "";
-            }
-
-            // Now, try to add the word to the new line
-            gfx->getTextBounds(word, 0, 0, &x1, &y1, &width, &height);
-            if (width <= maxWidth) {
-                currentLineStr = word;
-            }
-            else {
-                // Split the word with hyphen
-                String part = "";
-                size_t splitPos = 0;
-                for (; splitPos < word.length(); ++splitPos) {
-                    String temp = part + word[splitPos];
-                    String tempWithHyphen = temp + "-";
-                    gfx->getTextBounds(tempWithHyphen, 0, 0, &x1, &y1, &width, &height);
-                    if (width > maxWidth) {
-                        break;
-                    }
-                    part += word[splitPos];
-                }
-
-                if (splitPos > 0) {
-                    part += "-";
-                    wrappedLines.push_back(part);
-                    // Add the remaining part of the word to the next line
-                    String remaining = word.substring(splitPos);
-                    // Recursive call to handle the remaining part
-                    std::vector<String> remainingWrapped = wrapText(remaining, maxWidth);
-                    wrappedLines.insert(wrappedLines.end(), remainingWrapped.begin(), remainingWrapped.end());
-                    currentLineStr = "";
-                }
-                else {
-                    // Cannot split the word, add as is
-                    wrappedLines.push_back(word);
-                    currentLineStr = "";
-                }
-            }
-        }
-    }
-
-    // Add the last line if it's not empty
-    if (currentLineStr.length() > (prefix.length() > 0 ? prefix.length() : 0)) {
-        wrappedLines.push_back(currentLineStr);
-    }
-
-    return wrappedLines;
-}
-
-void Tab::refreshTab() {
-    if (!tabNeedsRefresh) return;  // Only refresh if the content has changed
-
-    clearTab();  // Clear the tab area before updating content
-
-    int lineHeight = calculateLineHeight();  // Adjust line height based on style
-    gfx->setTextColor(COLOR_WHITE);
-
-    // Recompute all wrapped lines
-    wrappedLinesCache.clear();
-
-    for (size_t i = 0; i < lines.size(); ++i) {
-        // Determine the prefix based on the line style
-        String prefix = "";
-        if (style == STYLE_NUMBERED) {
-            prefix = String(i + 1) + ". ";  // Numbering style
-        }
-        else if (style == STYLE_BULLETS) {
-            prefix = "• ";  // Bullet style
-        }
-
-        // Wrap the line with the prefix applied only on the first wrapped line
-        std::vector<String> wrappedLines = wrapText(lines[i], area.width, prefix);
-
-        // Add to cache
-        for (auto &line : wrappedLines) {
-            wrappedLinesCache.push_back(line);
-        }
-    }
-
-    // Calculate the number of visible lines
-    int visibleLines = area.height / lineHeight;
-
-    // Clamp currentLine to ensure it's within valid range
-    clampCurrentLine();
-
-    // Now render the visible lines based on currentLine and visibleLines
-    for (int i = currentLine; i < currentLine + visibleLines && i < wrappedLinesCache.size(); ++i) {
-        int cursorY = area.y + (i - currentLine) * lineHeight;
-
-        gfx->setCursor(area.x, cursorY);
-        gfx->println(wrappedLinesCache[i]);
-    }
-
-    tabNeedsRefresh = false;  // Mark tab as refreshed
-}
-
-void Tab::scrollUp() {
-    if (currentLine > 0) {
-        currentLine--;
-        tabNeedsRefresh = true; // Mark for refresh when scrolling
-    }
-}
-
-void Tab::scrollDown() {
-    // Ensure the currentLine doesn't exceed the number of lines
-    if (currentLine < lines.size() - 1) {
-        currentLine++;
-        tabNeedsRefresh = true; // Mark for refresh when scrolling
-    }
-}
-
-
-void Tab::switchTab() {
-    // Logic to switch between tabs, to be implemented
-}
-
-void Tab::selectTab() {
-    // Return the selected tab's name as a string
-    Serial.println("Selected Tab: " + name);
-}
-
-String Tab::getName() const {
-    return name;
-}
-
-DisplayArea Tab::getArea() const {
-    return area;
-}
-
-LineStyle Tab::getStyle() const {
-    return style;
-}
-
-std::vector<String> Tab::getLines() const {
-    return lines;
-}
-
-void Tab::clampCurrentLine() {
-    int visibleLines = area.height / calculateLineHeight();
-    int maxLine = wrappedLinesCache.size() - visibleLines;
-
-    if (maxLine < 0) {
-        maxLine = 0;
-    }
-
-    bool clamped = false;
-
-    if (currentLine > maxLine) {
-        currentLine = maxLine;
-        clamped = true;
-    }
-
-    if (currentLine < 0) {
-        currentLine = 0;
-        clamped = true;
-    }
-
-    if (clamped) {
+    void Tab::setStyle(LineStyle newStyle)
+    {
+        style = newStyle;
         tabNeedsRefresh = true;
     }
+
+    void Tab::addLine(String line)
+    {
+        lines.push_back(line);
+        tabNeedsRefresh = true;
+    }
+
+    void Tab::RemoveAllLines()
+    {
+        lines.clear();
+        wrappedLinesCache.clear();
+        scrollOffset = 0;
+        tabNeedsRefresh = true;
+    }
+
+    void Tab::clearTab()
+    {
+        gfx->fillRect(area.x, area.y, area.width, area.height, COLOR_BLACK);
+    }
+
+    int Tab::calculateLineHeight()
+    {
+        return 10; // Adjust based on your font size
+    }
+
+    std::vector<String> Tab::wrapText(String text, int maxWidth, String prefix)
+    {
+        std::vector<String> wrappedLines;
+        String currentLine = prefix;
+        int16_t x1, y1;
+        uint16_t w, h;
+
+        for (size_t i = 0; i < text.length(); ++i)
+        {
+            currentLine += text[i];
+            gfx->setTextSize(1);
+            gfx->getTextBounds(currentLine, 0, 0, &x1, &y1, &w, &h);
+
+            if (w > maxWidth)
+            {
+                // Remove the last character and store the line
+                currentLine.remove(currentLine.length() - 1);
+                wrappedLines.push_back(currentLine);
+
+                // Start a new line with the current character
+                currentLine = prefix + text[i];
+            }
+        }
+
+        if (currentLine.length() > 0)
+        {
+            wrappedLines.push_back(currentLine);
+        }
+
+        return wrappedLines;
+    }
+
+    void Tab::refreshTab()
+    {
+        if (!tabNeedsRefresh)
+            return;
+
+        clearTab();
+
+        // Draw tab headers within the DisplayArea
+        DrawTabHeaders({*this}, 0);
+
+        // Prepare wrapped lines
+        wrappedLinesCache.clear();
+        for (size_t i = 0; i < lines.size(); ++i)
+        {
+            String prefix = "";
+            if (style == STYLE_NUMBERED)
+            {
+                prefix = String(i + 1) + ". ";
+            }
+            else if (style == STYLE_BULLETS)
+            {
+                prefix = "• ";
+            }
+
+            std::vector<String> wrapped = wrapText(lines[i], area.width - 10, prefix);
+            wrappedLinesCache.insert(wrappedLinesCache.end(), wrapped.begin(), wrapped.end());
+        }
+
+        gfx->setTextColor(COLOR_WHITE);
+        gfx->setTextSize(1);
+
+        int lineHeight = calculateLineHeight();
+
+        // Recalculate maxVisibleLines in case area.height has changed
+        maxVisibleLines = (area.height - 20) / lineHeight; // Subtract tab header height
+
+        // Clamp scrollOffset to valid range
+        clampScrollOffset();
+
+        int startLine = scrollOffset;
+        int endLine = std::min(startLine + maxVisibleLines, static_cast<int>(wrappedLinesCache.size()));
+
+        int cursorY = area.y + 20; // Start below tab headers
+
+        for (int i = startLine; i < endLine; ++i)
+        {
+            gfx->setCursor(area.x + 5, cursorY);
+            gfx->println(wrappedLinesCache[i]);
+            cursorY += lineHeight;
+        }
+
+        tabNeedsRefresh = false;
+    }
+
+    void Tab::DrawTabHeaders(const std::vector<Tab> &tabs, int currentIndex)
+    {
+        int tabWidth = area.width / tabs.size();
+        int tabHeight = 20;
+
+        for (size_t i = 0; i < tabs.size(); ++i)
+        {
+            int x = area.x + i * tabWidth;
+            uint16_t bgColor = (i == currentIndex) ? COLOR_ORANGE : COLOR_WHEAT_CREAM;
+            uint16_t textColor = COLOR_WHITE;
+
+            // Draw the tab background within the DisplayArea
+            gfx->fillRect(x, area.y, tabWidth, tabHeight, bgColor);
+
+            // Draw the tab name centered
+            int16_t x1, y1;
+            uint16_t w, h;
+            gfx->setTextSize(1);
+            gfx->getTextBounds(tabs[i].name.c_str(), x, 0, &x1, &y1, &w, &h);
+            int textX = x + (tabWidth - w) / 2;
+            int textY = area.y + (tabHeight - h) / 2;
+
+            gfx->setCursor(textX, textY);
+            gfx->setTextColor(textColor);
+            gfx->print(tabs[i].name);
+        }
+    }
+
+    void Tab::scrollUp()
+    {
+        if (scrollOffset > 0)
+        {
+            scrollOffset--;
+            tabNeedsRefresh = true;
+        }
+    }
+
+    void Tab::scrollDown()
+    {
+        int maxScrollOffset = std::max(0, static_cast<int>(wrappedLinesCache.size()) - maxVisibleLines);
+
+        if (scrollOffset < maxScrollOffset)
+        {
+            scrollOffset++;
+            tabNeedsRefresh = true;
+        }
+    }
+
+    void Tab::clampScrollOffset()
+    {
+        int maxScrollOffset = std::max(0, static_cast<int>(wrappedLinesCache.size()) - maxVisibleLines);
+
+        if (scrollOffset > maxScrollOffset)
+        {
+            scrollOffset = maxScrollOffset;
+        }
+
+        if (scrollOffset < 0)
+        {
+            scrollOffset = 0;
+        }
+    }
+
+    String Tab::getName() const
+    {
+        return name;
+    }
+
+    DisplayArea Tab::getArea() const
+    {
+        return area;
+    }
+
+    LineStyle Tab::getStyle() const
+    {
+        return style;
+    }
+
+    std::vector<String> Tab::getLines() const
+    {
+        return lines;
+    }
+
+    String Tab::getTitle() const
+    {
+        return name;
+    }
+
+    void Tab::setNeedsRefresh(bool needsRefresh)
+{
+    tabNeedsRefresh = needsRefresh;
 }
 
 } // namespace NuggetsInc

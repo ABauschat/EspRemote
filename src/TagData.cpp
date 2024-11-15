@@ -101,6 +101,9 @@ TagData TagData::parseRawData(const std::vector<uint8_t>& rawData) {
         std::copy(rawData.begin() + i * 4, rawData.begin() + (i + 1) * 4, NFCTagData.userMemory.pages[i - 4].begin());
     }
 
+    // Set Raw Data
+    NFCTagData.rawData = rawData;
+
     // Populate Dynamic Lock Bytes based on tag type
     size_t dynamicLockPageStart = 0;
     if (NFCTagData.tagType == 213) {

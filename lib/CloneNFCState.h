@@ -35,6 +35,10 @@ private:
     DisplayUtils* displayUtils;
     TagData* currentTagData;
     void displayTagInformation();
+    std::vector<Tab> tabs;
+    int currentTabIndex;
+    void populateTabs();
+
 };
 
 } // namespace NuggetsInc
