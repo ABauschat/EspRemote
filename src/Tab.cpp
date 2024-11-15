@@ -36,7 +36,7 @@ namespace NuggetsInc
 
     int Tab::calculateLineHeight()
     {
-        return 10; // Adjust based on your font size
+        return 20; // Adjust based on your font size
     }
 
     std::vector<String> Tab::wrapText(String text, int maxWidth, String prefix)
@@ -49,7 +49,7 @@ namespace NuggetsInc
         for (size_t i = 0; i < text.length(); ++i)
         {
             currentLine += text[i];
-            gfx->setTextSize(1);
+            gfx->setTextSize(2);
             gfx->getTextBounds(currentLine, 0, 0, &x1, &y1, &w, &h);
 
             if (w > maxWidth)
@@ -100,7 +100,7 @@ namespace NuggetsInc
         }
 
         gfx->setTextColor(COLOR_WHITE);
-        gfx->setTextSize(1);
+        gfx->setTextSize(2);
 
         int lineHeight = calculateLineHeight();
 
@@ -142,7 +142,7 @@ namespace NuggetsInc
             // Draw the tab name centered
             int16_t x1, y1;
             uint16_t w, h;
-            gfx->setTextSize(1);
+            gfx->setTextSize(2);
             gfx->getTextBounds(tabs[i].name.c_str(), x, 0, &x1, &y1, &w, &h);
             int textX = x + (tabWidth - w) / 2;
             int textY = area.y + (tabHeight - h) / 2;

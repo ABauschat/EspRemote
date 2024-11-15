@@ -28,7 +28,7 @@ namespace NuggetsInc
         Arduino_GFX *display = Device::getInstance().getDisplay();
 
         // Define the virtual display area
-        DisplayArea tabArea = {10, 10, 250, 150}; // Your specified area
+        DisplayArea tabArea = {0, 0, 536, 150}; // Your specified area
 
         tabs.emplace_back("Info", tabArea, display);
         tabs.emplace_back("Raw Data", tabArea, display);
