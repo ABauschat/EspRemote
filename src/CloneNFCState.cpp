@@ -80,7 +80,7 @@ namespace NuggetsInc
             }
             else if (event.type == EVENT_SELECT)
             {
-                // Implement selection logic if needed
+                cloneTagData = true;
             }
         }
 
@@ -91,6 +91,21 @@ namespace NuggetsInc
         else if (!cloneTagData && displayNeedsRefresh)
         {
             displayTagInformation();
+        }
+        else if (cloneTagData)
+        {
+            if (cloneTag())
+            {
+                displayUtils->displayMessage("Tag Cloned Successfully");
+                delay(2000);
+                Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+            }
+            else
+            {
+                displayUtils->displayMessage("Failed to Clone Tag");
+                delay(2000);
+                Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+            }
         }
     }
 
@@ -184,8 +199,18 @@ namespace NuggetsInc
 
     bool CloneNFCState::cloneTag()
     {
-        // Implement cloning logic here
-        return true;
+        displayUtils->newTerminalDisplay("Sending Data to NFC Tag");
+        if (currentTagData == nullptr)
+        {
+            return false;
+        }
+
+        if (nfcLogic->writeTagData(*currentTagData))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     void CloneNFCState::handleScroll(EventType eventType)

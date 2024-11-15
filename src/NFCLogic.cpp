@@ -111,40 +111,74 @@ const std::vector<uint8_t>& NFCLogic::readRawData()
     return rawData;
 }
 
-bool NFCLogic::writeNTAG2xx(uint8_t* targetUID, uint8_t targetUIDLength, const std::vector<String>& dataLines) {
-    std::vector<uint8_t> ndefData;
-    for (const auto& line : dataLines) {
-        for (size_t i = 0; i < line.length(); i += 3) { // "XX " per byte
-            if (i + 2 > line.length()) break;
-            String byteStr = line.substring(i, i + 2);
-            ndefData.push_back(static_cast<uint8_t>(strtol(byteStr.c_str(), NULL, 16)));
-        }
+bool NFCLogic::writeTagData(const TagData& tagData) {
+    // Start writing from page 4 (user memory area)
+    size_t startPage = 4;
+
+    // Calculate the number of pages to write
+    // Each page is 4 bytes
+    size_t totalBytes = tagData.rawData.size();
+
+    // Ensure we have enough data
+    if (totalBytes <= 16) {
+        return false; // Not enough data to write user memory
     }
 
-    for (size_t page = 4; page < 39 && (page - 4) * 4 < ndefData.size(); page++) {
+    size_t userDataBytes = totalBytes - 16; // Subtract the first 16 bytes (pages 0-3)
+    size_t totalPages = (userDataBytes + 3) / 4; // Round up to full pages
+
+    // Determine max pages based on tag type
+    size_t maxPages = 0;
+    if (tagData.tagType == 213) {
+        maxPages = 36; // NTAG213 user memory pages
+    } else if (tagData.tagType == 215) {
+        maxPages = 126; // NTAG215 user memory pages
+    } else if (tagData.tagType == 216) {
+        maxPages = 222; // NTAG216 user memory pages
+    } else {
+        return false; // Unknown tag type
+    }
+
+    // Adjust totalPages if it exceeds maxPages
+    if (totalPages > maxPages) {
+        totalPages = maxPages;
+    }
+
+    for (size_t pageIndex = 0; pageIndex < totalPages; ++pageIndex) {
+        size_t page = startPage + pageIndex;
+        size_t byteIndex = 16 + pageIndex * 4; // Starting from rawData[16]
+
         uint8_t pageData[4] = {0};
-        for (uint8_t i = 0; i < 4; i++) {
-            size_t byteIndex = (page - 4) * 4 + i;
-            if (byteIndex < ndefData.size()) {
-                pageData[i] = ndefData[byteIndex];
+
+        // Copy up to 4 bytes from rawData to pageData
+        for (size_t i = 0; i < 4; ++i) {
+            if (byteIndex + i < totalBytes) {
+                pageData[i] = tagData.rawData[byteIndex + i];
+            } else {
+                pageData[i] = 0; // Pad with zeros if necessary
             }
         }
 
+        // Write the page data to the tag
         if (!nfc.ntag2xx_WritePage(page, pageData)) {
-            return false;
+            return false; // Failed to write page
         }
 
+        // Optional: Verify the written data
+        /*
         uint8_t verifyData[4];
         if (!nfc.ntag2xx_ReadPage(page, verifyData)) {
-            return false;
+            return false; // Failed to read page for verification
         }
 
         if (memcmp(pageData, verifyData, 4) != 0) {
-            return false;
+            return false; // Verification failed
         }
+        */
     }
 
-    return true;
+    return true; // Successfully written all pages
 }
+
 
 } // namespace NuggetsInc

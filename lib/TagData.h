@@ -25,6 +25,8 @@ public:
 
     int ValidateTagData(TagData NFCTagData);
 
+    void addTextRecord(const std::string &text, const std::string &languageCode);
+
     // Data sections based on NTAG structure
     struct UIDAndManufacturer {
         std::array<uint8_t, 7> UID;

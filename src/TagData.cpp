@@ -354,4 +354,49 @@ namespace NuggetsInc
         return payloadEnd - startPos;
     }
 
+    void TagData::addTextRecord(const std::string &text, const std::string &languageCode)
+    {
+        // Create the NDEF payload
+        std::vector<uint8_t> payload;
+
+        // Add 0x01 byte
+        payload.push_back(0x01);
+
+        // Add placeholder byte
+        payload.push_back(0x00);
+
+        // Add 'T' byte for text record
+        payload.push_back('T');
+
+        // Add placeholder byte
+        payload.push_back(0x00);
+
+        // Add 'en' language code
+        for (char c : languageCode)
+        {
+            payload.push_back(static_cast<uint8_t>(c));
+        }
+
+        // Add text content
+        for (char c : text)
+        {
+            payload.push_back(static_cast<uint8_t>(c));
+        }
+
+        // Add placeholder byte
+        payload.push_back(0x00);
+
+        // Add 0xFE byte
+        payload.push_back(0xFE);
+
+        // Remove existing 0xFE byte from rawData if present
+        if (!rawData.empty() && rawData.back() == 0xFE)
+        {
+            rawData.pop_back();
+        }
+
+        // Add new NDEF payload to the end of rawData in binary format
+        rawData.insert(rawData.end(), payload.begin(), payload.end());
+    }
+
 } // namespace NuggetsInc
