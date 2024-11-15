@@ -85,12 +85,12 @@ void MenuState::executeSelection() {
 
     switch (menuIndex) {
         case 0: // Connect To Device
-            displayUtils->displayMessage("Connecting...");
+            displayUtils->displayMessage("Scan NFC Tag To Connect To Device");
             delay(2000);
             displayMenu();
             break;
         case 1: // Setup NFC Chip
-            displayUtils->displayMessage("Setting up NFC...");
+            displayUtils->displayMessage("Connect ESP32 to RX/TX pins");
             delay(2000);
             displayMenu();
             break;
