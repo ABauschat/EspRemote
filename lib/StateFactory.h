@@ -9,7 +9,9 @@ enum StateType {
     MENU_STATE,
     SNAKE_GAME_STATE,
     CLEAR_STATE,
-    CLONE_NFC_STATE 
+    CLONE_NFC_STATE ,
+    REMOTE_CONTROL_STATE,
+    SETUP_NFC_DEVICE_STATE,
 };
 
 class StateFactory {

@@ -4,6 +4,8 @@
 #include "SnakeGameState.h"
 #include "ClearState.h"
 #include "CloneNFCState.h"
+#include "RemoteControlState.h"
+#include "SetupNFCDeviceState.h"
 
 namespace NuggetsInc {
 
@@ -21,6 +23,10 @@ AppState *StateFactory::createActualState(StateType type)
             return new SnakeGameState();
         case CLONE_NFC_STATE:
             return new CloneNFCState();
+        case REMOTE_CONTROL_STATE:
+            return new RemoteControlState();
+        case SETUP_NFC_DEVICE_STATE:
+            return new SetupNFCDeviceState();
         default:
             return nullptr;
     }

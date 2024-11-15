@@ -84,15 +84,11 @@ void MenuState::executeSelection() {
     Arduino_GFX* gfx = Device::getInstance().getDisplay();
 
     switch (menuIndex) {
-        case 0: // Connect To Device
-            displayUtils->displayMessage("Scan NFC Tag To Connect To Device");
-            delay(2000);
-            displayMenu();
+        case 0: 
+            app.changeState(StateFactory::createState(REMOTE_CONTROL_STATE));
             break;
-        case 1: // Setup NFC Chip
-            displayUtils->displayMessage("Connect ESP32 to RX/TX pins");
-            delay(2000);
-            displayMenu();
+        case 1: 
+            app.changeState(StateFactory::createState(SETUP_NFC_DEVICE_STATE));
             break;
         case 2: // Clone NFC Chip
             app.changeState(StateFactory::createState(CLONE_NFC_STATE));
