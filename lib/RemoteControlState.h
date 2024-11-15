@@ -5,23 +5,27 @@
 #include "EventManager.h"
 #include "Device.h"
 #include "DisplayUtils.h"
+#include "NFCLogic.h"
 
-namespace NuggetsInc {
+namespace NuggetsInc
+{
 
-class RemoteControlState : public AppState {
-public:
-    RemoteControlState();
-    ~RemoteControlState() override;
+    class RemoteControlState : public AppState
+    {
+    public:
+        RemoteControlState();
+        ~RemoteControlState() override;
 
-    void onEnter() override;
-    void onExit() override;
-    void update() override;
+        void onEnter() override;
+        void onExit() override;
+        void update() override;
 
-private:
-    void handleInput(EventType eventType);
-    void displayRemoteControlInterface();
-    DisplayUtils* displayUtils;
-};
+    private:
+        void handleInput(EventType eventType);
+        void displayRemoteControlInterface();
+        DisplayUtils *displayUtils;
+        NFCLogic *nfcLogic;
+    };
 
 } // namespace NuggetsInc
 
