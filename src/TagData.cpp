@@ -354,49 +354,142 @@ namespace NuggetsInc
         return payloadEnd - startPos;
     }
 
-    void TagData::addTextRecord(const std::string &text, const std::string &languageCode)
+void TagData::addTextRecord(const std::string &text, const std::string &languageCode)
+{
+    // Find the start of the NDEF message (after pages 0-3)
+    size_t ndefStartIndex = 16; // Start from rawData[16]
+
+    // Find the position of the Terminator TLV (0xFE)
+    size_t terminatorIndex = rawData.size();
+    for (size_t i = ndefStartIndex; i < rawData.size(); ++i)
     {
-        // Create the NDEF payload
-        std::vector<uint8_t> payload;
-
-        // Add 0x01 byte
-        payload.push_back(0x01);
-
-        // Add placeholder byte
-        payload.push_back(0x00);
-
-        // Add 'T' byte for text record
-        payload.push_back('T');
-
-        // Add placeholder byte
-        payload.push_back(0x00);
-
-        // Add 'en' language code
-        for (char c : languageCode)
+        if (rawData[i] == 0xFE)
         {
-            payload.push_back(static_cast<uint8_t>(c));
+            terminatorIndex = i;
+            break;
         }
-
-        // Add text content
-        for (char c : text)
-        {
-            payload.push_back(static_cast<uint8_t>(c));
-        }
-
-        // Add placeholder byte
-        payload.push_back(0x00);
-
-        // Add 0xFE byte
-        payload.push_back(0xFE);
-
-        // Remove existing 0xFE byte from rawData if present
-        if (!rawData.empty() && rawData.back() == 0xFE)
-        {
-            rawData.pop_back();
-        }
-
-        // Add new NDEF payload to the end of rawData in binary format
-        rawData.insert(rawData.end(), payload.begin(), payload.end());
     }
+
+    // If no terminator found, assume no NDEF message exists
+    if (terminatorIndex == rawData.size())
+    {
+        // No existing NDEF message, so create one
+        ndefStartIndex = rawData.size();
+    }
+    else
+    {
+        // There is an existing NDEF message
+        // Need to adjust the ME bit of the last record to 0
+        // Find the header of the last record
+
+        // We'll parse the NDEF message to find the last record
+        size_t pos = ndefStartIndex;
+        size_t lastRecordHeaderIndex = pos;
+
+        while (pos < terminatorIndex)
+        {
+            // Read the record header
+            uint8_t header = rawData[pos];
+
+            // Get flags from header
+            bool sr = header & 0x10; // Short Record
+            bool il = header & 0x08; // ID Length present
+            uint8_t typeLength = rawData[pos + 1];
+            size_t payloadLength = 0;
+            size_t idLength = 0;
+            size_t headerLength = 2; // Header and Type Length
+
+            if (sr)
+            {
+                // Short Record - payload length is 1 byte
+                payloadLength = rawData[pos + 2];
+                headerLength += 1; // Payload Length
+            }
+            else
+            {
+                // Normal Record - payload length is 4 bytes
+                payloadLength = (rawData[pos + 2] << 24) | (rawData[pos + 3] << 16) | (rawData[pos + 4] << 8) | rawData[pos + 5];
+                headerLength += 4; // Payload Length
+            }
+
+            if (il)
+            {
+                idLength = rawData[pos + headerLength];
+                headerLength += 1; // ID Length
+            }
+
+            headerLength += typeLength; // Type Field
+
+            if (il)
+            {
+                headerLength += idLength; // ID Field
+            }
+
+            // Payload
+            size_t recordLength = headerLength + payloadLength;
+
+            lastRecordHeaderIndex = pos; // Keep track of the header of the last record
+
+            pos += recordLength;
+        }
+
+        // Now, adjust the ME bit of the last record
+        uint8_t lastHeader = rawData[lastRecordHeaderIndex];
+        rawData[lastRecordHeaderIndex] = lastHeader & 0x7F; // Clear the ME bit (bit 7)
+
+        // The new record will have MB=0 (since it's not the first record)
+    }
+
+    // Build the new NDEF text record
+    std::vector<uint8_t> ndefRecord;
+
+    // Record Header: MB=0 or 1, ME=1, CF=0, SR=1, IL=0, TNF=0x01 (Well-known type)
+    uint8_t NDEFHeader = 0xD1;
+    if (ndefStartIndex != 16)
+    {
+        // Not the first record, so MB=0
+        NDEFHeader &= 0x7F; // Clear MB bit
+    }
+    // ME bit should be set to 1 (since it's the last record)
+    NDEFHeader |= 0x40; // Ensure ME bit is set
+    ndefRecord.push_back(NDEFHeader);
+
+    // Type Length: Length of 'T' (always 1 for text records)
+    ndefRecord.push_back(0x01);
+
+    // Payload Length: Status byte + language code length + text length
+    uint8_t statusByte = languageCode.length() & 0x3F; // Bits 7-5 are zero, bits 4-0 are language code length
+    uint8_t payloadLength = 1 + languageCode.length() + text.length();
+    ndefRecord.push_back(payloadLength);
+
+    // Type Field: 'T' for text record
+    ndefRecord.push_back('T');
+
+    // Payload
+    ndefRecord.push_back(statusByte);
+
+    // Language Code
+    for (char c : languageCode)
+    {
+        ndefRecord.push_back(static_cast<uint8_t>(c));
+    }
+
+    // Text Content
+    for (char c : text)
+    {
+        ndefRecord.push_back(static_cast<uint8_t>(c));
+    }
+
+    // Insert the new record before the terminator
+    rawData.insert(rawData.begin() + terminatorIndex, ndefRecord.begin(), ndefRecord.end());
+
+    // Ensure the terminator is present
+    if (rawData.back() != 0xFE)
+    {
+        rawData.push_back(0xFE);
+    }
+}
+
+
 
 } // namespace NuggetsInc

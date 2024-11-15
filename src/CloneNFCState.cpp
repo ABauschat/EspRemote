@@ -80,6 +80,7 @@ namespace NuggetsInc
             }
             else if (event.type == EVENT_SELECT)
             {
+                delay(100);
                 cloneTagData = true;
             }
         }
