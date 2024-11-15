@@ -91,21 +91,9 @@ namespace NuggetsInc
         else if (!cloneTagData && displayNeedsRefresh)
         {
             displayTagInformation();
-        }
-        else if (cloneTagData)
+        } else if (cloneTagData)
         {
-            if (cloneTag())
-            {
-                displayUtils->displayMessage("Tag Cloned Successfully");
-                delay(2000);
-                Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
-            }
-            else
-            {
-                displayUtils->displayMessage("Failed to Clone Tag");
-                delay(2000);
-                Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
-            }
+           cloneTag();
         }
     }
 
@@ -199,15 +187,28 @@ namespace NuggetsInc
 
     bool CloneNFCState::cloneTag()
     {
-        displayUtils->newTerminalDisplay("Sending Data to NFC Tag");
+
+        // Check if a tag is still present before writing
+        if (!nfcLogic->isTagPresent())
+        {
+            displayUtils->displayMessage("Searching For NFC Tag");
+            return false;
+        } else {
+            displayUtils->displayMessage("NFC Tag Detected: Keep Steady");
+        }
+
         if (currentTagData == nullptr)
         {
+            displayUtils->displayMessage("No Tag Data Available");
             return false;
         }
 
+        // Proceed to write tag data
         if (nfcLogic->writeTagData(*currentTagData))
         {
-            return true;
+            displayUtils->displayMessage("Tag Cloned Successfully");
+            delay(2000);
+            Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
         }
 
         return false;
