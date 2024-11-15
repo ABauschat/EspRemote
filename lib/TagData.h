@@ -1,4 +1,3 @@
-//TagData.h
 #ifndef TAGDATA_H
 #define TAGDATA_H
 
@@ -63,6 +62,15 @@ public:
         std::string passwordHex;
     } interpretations;
 
+    // NDEF Record Structure
+    struct Record {
+        std::string type;
+        std::vector<uint8_t> payload;
+    };
+
+    // Array of NDEF Records
+    std::vector<Record> records;
+
     // Raw data storage
     std::vector<uint8_t> rawData;
 
@@ -71,8 +79,14 @@ public:
 private:
     // Helper method to determine NTAG type
     static int determineTagType(const std::vector<uint8_t>& rawData);
+
+    // Method to parse NDEF records from user memory
+    void parseRecords();
+
+    // Helper to extract a record from the given position
+    size_t extractRecord(size_t pos, Record& record);
 };
 
 } // namespace NuggetsInc
 
-#endif // TAGDATA_H 
+#endif // TAGDATA_H

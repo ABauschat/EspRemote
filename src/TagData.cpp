@@ -19,6 +19,7 @@ TagData::TagData(const TagData& other) {
     interpretations = other.interpretations;
     rawData = other.rawData;
     tagType = other.tagType;
+    records = other.records;
 }
 
 // Method to validate if the provided data is a supported NTAG type
@@ -157,6 +158,9 @@ TagData TagData::parseRawData(const std::vector<uint8_t>& rawData) {
     }
     NFCTagData.interpretations.passwordHex = passwordHexStream.str();
 
+    // Parse NDEF Records
+    NFCTagData.parseRecords();
+
     // Return the populated NFCTagData
     return NFCTagData;
 }
@@ -195,5 +199,88 @@ int TagData::ValidateTagData(TagData NFCTagData) {
     return 0;
 }
 
+void TagData::parseRecords() {
+    // Starting position after initial pages (skip first 4 pages, which are 16 bytes)
+    size_t pos = 4 * 4;
+
+    while (pos < rawData.size()) {
+        // Check if the current byte is the start byte 0x01
+        if (rawData[pos] == 0x01) {
+            Record record;
+            size_t recordLength = extractRecord(pos, record);
+            if (recordLength == 0) {
+                // Failed to extract record, move to next byte
+                pos++;
+                continue;
+            }
+            records.push_back(record);
+            pos += recordLength;
+        } else {
+            // Move to the next byte
+            pos++;
+        }
+    }
+}
+
+// Helper to extract a record from the given position
+size_t TagData::extractRecord(size_t pos, Record& record) {
+    size_t startPos = pos;
+
+    // Check for the start byte 0x01
+    if (rawData[pos] != 0x01) {
+        return 0;
+    }
+
+    if (pos + 2 >= rawData.size()) return 0;
+
+    // Read the type from rawData[pos + 1]
+    uint8_t typeByte = rawData[pos + 2];
+    record.type = static_cast<char>(typeByte);
+
+    // Look for the end byte 0xFE or next start byte 0x01
+    size_t payloadStart = pos + 2;
+    size_t payloadEnd = pos + 2;
+    bool endFound = false;
+    bool nextStartFound = false;
+
+    while (payloadEnd < rawData.size()) {
+        if (rawData[payloadEnd] == 0xFE) {
+            endFound = true;
+            break;
+        }
+        if (rawData[payloadEnd] == 0x01) {
+            nextStartFound = true;
+            break;
+        }
+        payloadEnd++;
+    }
+
+    if (!endFound && !nextStartFound) {
+        // End byte not found
+        return 0;
+    }
+
+    // Extract the raw payload including placeholders
+    std::vector<uint8_t> rawPayload(rawData.begin() + payloadStart, rawData.begin() + payloadEnd);
+
+    // Remove placeholders: first byte and last byte
+    if (rawPayload.size() < 2) return 0; // Not enough data after removing placeholders
+    rawPayload.erase(rawPayload.begin(), rawPayload.begin()+2); // Remove the 0x01 and first placeholder byte
+    
+    if (nextStartFound) { // If next start byte found, remove the last placeholder byte
+        rawPayload.pop_back(); // Remove last placeholder byte
+    }
+    // If the type is 'T', remove the language identifier (first 2 bytes)
+    if (record.type == "T") {
+        if (rawPayload.size() < 2) return 0; // Not enough data to remove language identifier
+        rawPayload.erase(rawPayload.begin(), rawPayload.begin() + 2); // Remove language identifier
+    }
+
+    // Set the cleaned payload
+    record.payload = rawPayload;
+
+    // Return the length consumed
+    return payloadEnd - startPos;
+}
 
 } // namespace NuggetsInc
