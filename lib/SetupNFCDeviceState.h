@@ -22,6 +22,12 @@ namespace NuggetsInc
     private:
         NFCLogic *nfcLogic;
         DisplayUtils *displayUtils;
+
+        bool macAddressFound;    
+        bool readingStarted;      
+        String macAddress;
+        unsigned long startTime;  
+
         void displaySetupInstructions();
     };
 

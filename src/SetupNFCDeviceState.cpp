@@ -4,26 +4,70 @@
 #include "DisplayUtils.h"
 #include "Colors.h"
 #include "Config.h"
+#include <Wire.h>
 
 namespace NuggetsInc
 {
 
     SetupNFCDeviceState::SetupNFCDeviceState()
-        : nfcLogic(new NFCLogic(PN532_IRQ, PN532_RESET)) {}
+        : nfcLogic(new NFCLogic(PN532_IRQ, PN532_RESET)),
+          displayUtils(nullptr),
+          macAddressFound(false),
+          readingStarted(false),
+          startTime(0) {}
 
     SetupNFCDeviceState::~SetupNFCDeviceState()
     {
         delete nfcLogic;
+        nfcLogic = nullptr;
+        macAddressFound = false;
+        macAddress = "";
+        if (displayUtils)
+        {
+            delete displayUtils;
+            displayUtils = nullptr;
+        }
     }
 
     void SetupNFCDeviceState::onEnter()
     {
+        Serial.begin(115200);
+        while (!Serial)
+        {
+            ;
+        }
+
+        // Initialize DisplayUtils
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
-        displaySetupInstructions();
+
+        // Display initial message
+        displayUtils->newTerminalDisplay("Looking For Device...");
+
+        // Define UART2 pins (assuming RX=40, TX=41)
+        const int RX_PIN = 40;
+        const int TX_PIN = 41;
+        Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
+
+        // Initialize flags and variables
+        macAddressFound = false;
+        readingStarted = false;
+        startTime = 0;
+
+        // Clear any existing data in Serial2 buffer
+        while (Serial2.available())
+        {
+            Serial2.read();
+        }
     }
 
     void SetupNFCDeviceState::onExit()
     {
+        if (displayUtils)
+        {
+            delete displayUtils;
+            displayUtils = nullptr;
+        }
+        Serial2.end();
     }
 
     void SetupNFCDeviceState::update()
@@ -42,12 +86,61 @@ namespace NuggetsInc
             {
             }
         }
+
+        if (!readingStarted && !macAddressFound)
+        {
+            readingStarted = true;
+            displayUtils->addToTerminalDisplay("Scanning For Mac Adress...");
+            startTime = millis();
+            Serial2.println("GET_MAC");
+        }
+
+        if (readingStarted && !macAddressFound)
+        {
+            if (millis() - startTime >= 50)
+            {
+                readingStarted = false;
+                return;
+            }
+
+            while (Serial2.available())
+            {
+                String response = Serial2.readStringUntil('\n');
+                response.trim();
+
+                if ((response.length() == 17 || response.length() == 18))
+                {
+                    macAddress = response;
+                    macAddress.toUpperCase();
+
+                    if (macAddress.length() == 18)
+                    {
+                        macAddress = macAddress.substring(1);
+                    }
+
+                    displayUtils->addToTerminalDisplay("Device Found!");
+                    displayUtils->addToTerminalDisplay("MAC Address: " + macAddress);
+
+                    macAddressFound = true;
+                    readingStarted = false;
+                    return;
+                }
+                else
+                {
+                    displayUtils->addToTerminalDisplay("Invalid Response: [" + response + "]");
+                }
+            }
+        }
+
+        if (macAddressFound)
+        {
+            displaySetupInstructions();
+        }
     }
 
     void SetupNFCDeviceState::displaySetupInstructions()
     {
-        displayUtils->newTerminalDisplay("Place NFC Device on Reader");
-        displayUtils->addToTerminalDisplay("Press SELECT to Configure");
+        displayUtils->displayMessage("Mac Adress Found:" + macAddress + "\n Press SELECT to Begin Transfer to NFC");
     }
 
 } // namespace NuggetsInc
