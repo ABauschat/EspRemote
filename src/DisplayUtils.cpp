@@ -20,6 +20,10 @@ void DisplayUtils::displayMessage(const String& message) {
     previousMessage = message;
 }
 
+void DisplayUtils::clearDisplay() {
+    gfx->fillScreen(COLOR_BLACK);
+}
+
 void DisplayUtils::newTerminalDisplay(const String& message) {
     gfx->fillScreen(COLOR_BLACK);
     gfx->setTextColor(COLOR_WHITE);

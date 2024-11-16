@@ -9,28 +9,32 @@
 #include "NFCLogic.h"
 #include "Colors.h"
 
-namespace NuggetsInc {
+namespace NuggetsInc
+{
 
-// Define display tabs
-enum DisplayTab {
-    TAB_DATA,
-    TAB_INFO
-};
+    // Define display tabs
+    enum DisplayTab
+    {
+        TAB_DATA,
+        TAB_INFO
+    };
 
-class DisplayUtils {
-public:
-    DisplayUtils(Arduino_GFX* display);
-    ~DisplayUtils();
+    class DisplayUtils
+    {
+    public:
+        DisplayUtils(Arduino_GFX *display);
+        ~DisplayUtils();
 
-    // Display functions
-    void displayMessage(const String& message);
-    void newTerminalDisplay(const String& message);
-    void addToTerminalDisplay(const String& message);
+        // Display functions
+        void displayMessage(const String &message);
+        void newTerminalDisplay(const String &message);
+        void addToTerminalDisplay(const String &message);
+        void clearDisplay();
 
-private:
-    Arduino_GFX* gfx;
-    String previousMessage;
-};
+    private:
+        Arduino_GFX *gfx;
+        String previousMessage;
+    };
 
 } // namespace NuggetsInc
 

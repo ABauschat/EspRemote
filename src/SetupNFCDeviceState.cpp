@@ -99,6 +99,7 @@ namespace NuggetsInc
             {
                 if (macAddressFound)
                 {
+                    displayUtils->clearDisplay();
                     cloningStarted = true;
                 }
             }
