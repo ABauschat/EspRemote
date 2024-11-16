@@ -23,6 +23,23 @@ namespace NuggetsInc
     RemoteControlState::~RemoteControlState()
     {
         delete nfcLogic;
+        delete displayUtils;
+
+        // Remove Device 2 as a peer
+        if (isPeerAdded)
+        {
+            esp_now_del_peer(device2MAC);
+        }
+
+        esp_now_deinit();
+
+        WiFi.disconnect();
+
+        displayUtils = nullptr;
+
+        activeInstance = nullptr;
+
+        isPeerAdded = false;
     }
 
     void RemoteControlState::onEnter()
