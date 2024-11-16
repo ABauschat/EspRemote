@@ -32,7 +32,7 @@ namespace NuggetsInc
         TagData* currentTagData;
 
         void displaySetupInstructions();
-         void readNFCTag();
+        void readNFCTag();
     };
 
 } // namespace NuggetsInc

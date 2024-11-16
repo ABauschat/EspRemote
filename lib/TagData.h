@@ -27,6 +27,8 @@ public:
 
     void addTextRecord(const std::string &text, const std::string &languageCode);
 
+    uint8_t* CheckForTextRecordWithNITag();
+
     // Data sections based on NTAG structure
     struct UIDAndManufacturer {
         std::array<uint8_t, 7> UID;

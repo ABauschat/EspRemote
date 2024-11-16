@@ -14,45 +14,52 @@ namespace NuggetsInc
     RemoteControlState::RemoteControlState()
         : nfcLogic(new NFCLogic(PN532_IRQ, PN532_RESET)),
           isPeerAdded(false)
-    {
-        // Hardcode Device 2's MAC address: D8:13:2A:7F:67:D4
-        uint8_t hardcodedMAC[6] = {0xD8, 0x13, 0x2A, 0x7F, 0x67, 0xD4};
-        memcpy(device2MAC, hardcodedMAC, sizeof(device2MAC));
-    }
+    {}
 
     RemoteControlState::~RemoteControlState()
     {
         delete nfcLogic;
         delete displayUtils;
 
-        // Remove Device 2 as a peer
         if (isPeerAdded)
         {
             esp_now_del_peer(device2MAC);
         }
 
         esp_now_deinit();
-
         WiFi.disconnect();
-
         displayUtils = nullptr;
-
         activeInstance = nullptr;
-
         isPeerAdded = false;
+        memset(device2MAC, 0, sizeof(device2MAC));
     }
 
     void RemoteControlState::onEnter()
     {
-        activeInstance = this;  // Set the static instance pointer
+        activeInstance = this; // Set the static instance pointer
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
+        displayUtils->newTerminalDisplay("Verifying NFC chip");
+
+        if (!nfcLogic->initialize())
+        {
+            displayUtils->displayMessage("PN532 not found");
+            delay(2000);
+            Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+            return;
+        }
+
+        displayUtils->addToTerminalDisplay("NFC module Found");
+        displayUtils->clearDisplay();
+
+        tagDetected = false;
+
         setupESPNow();
         displayRemoteControlInterface();
     }
 
     void RemoteControlState::onExit()
     {
-        activeInstance = nullptr;  // Clear the static instance pointer
+        activeInstance = nullptr; // Clear the static instance pointer
     }
 
     void RemoteControlState::update()
@@ -69,10 +76,81 @@ namespace NuggetsInc
             }
             else
             {
-                handleInput(event.type);
+                if (isPeerAdded)
+                {
+                    handleInput(event.type);
+                }
             }
         }
+
+        if (!tagDetected)
+        {
+            readNFCTag();
+        } 
     }
+
+void RemoteControlState::readNFCTag()
+{
+    if (nfcLogic->isTagPresent())
+    {
+        displayUtils->displayMessage("NFC Tag Detected: Keep steady");
+
+        TagData tag;
+        const std::vector<uint8_t> &rawData = nfcLogic->readRawData();
+        TagData NewtagData = tag.parseRawData(rawData);
+        int validationCode = tag.ValidateTagData(NewtagData);
+
+        if (validationCode != 0)
+        {
+            displayUtils->displayMessage("Un-Supported Tag");
+            delay(1500);
+            return;
+        }
+        else
+        {
+            currentTagData = new TagData(NewtagData);
+        }
+
+        displayUtils->displayMessage("Verified NFC Tag");
+        delay(500);
+
+        uint8_t* macAddress = currentTagData->CheckForTextRecordWithNITag();
+
+        if(macAddress == nullptr)
+        {
+            displayUtils->displayMessage("No MAC Address found");
+            delay(1500);
+            Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+            return;
+        }
+        else
+        {
+            memcpy(device2MAC, macAddress, sizeof(device2MAC));
+            displayUtils->addToTerminalDisplay("Mac Address Found");
+            delay(500);
+
+            //print mac adress
+
+            displayUtils->addToTerminalDisplay("MAC Address: ");
+            for (int i = 0; i < 6; i++)
+            {
+                displayUtils->addToTerminalDisplay(String(device2MAC[i], HEX));
+            }
+
+            delay(9000);
+            displayUtils->clearDisplay();
+        }
+
+        setupESPNow();
+        tagDetected = true;
+    }
+    else
+    {
+        displayUtils->displayMessage("Searching for NFC Tag");
+        delay(100);
+    }
+}
+
 
     void RemoteControlState::handleInput(EventType eventType)
     {
@@ -133,7 +211,7 @@ namespace NuggetsInc
         // Add Device 2 as a peer
         esp_now_peer_info_t peerInfo = {};
         memcpy(peerInfo.peer_addr, device2MAC, sizeof(device2MAC));
-        peerInfo.channel = 0;  // Use the current channel
+        peerInfo.channel = 0; 
         peerInfo.encrypt = false;
 
         if (esp_now_add_peer(&peerInfo) == ESP_OK)
@@ -173,9 +251,6 @@ namespace NuggetsInc
 
     void RemoteControlState::handleOnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
     {
-        // Since the peer is already added, no need to add it again
-        // Just process incoming messages (e.g., responses from Device 2)
-
         struct_message incomingMessage;
         if (len >= sizeof(struct_message))
         {
@@ -195,7 +270,7 @@ namespace NuggetsInc
 
     void RemoteControlState::displayRemoteControlInterface()
     {
-        displayUtils->newTerminalDisplay("Scan NFC tag to control device");
+
     }
 
 } // namespace NuggetsInc

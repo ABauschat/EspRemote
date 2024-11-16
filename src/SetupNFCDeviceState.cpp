@@ -27,6 +27,8 @@ namespace NuggetsInc
             delete displayUtils;
             displayUtils = nullptr;
         }
+
+        
     }
 
     void SetupNFCDeviceState::onEnter()

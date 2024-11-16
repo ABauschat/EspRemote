@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <iomanip>
+#include <cstring>
 #include <algorithm>
 
 namespace NuggetsInc
@@ -490,6 +491,85 @@ void TagData::addTextRecord(const std::string &text, const std::string &language
     }
 }
 
+uint8_t* TagData::CheckForTextRecordWithNITag()
+{
+    static uint8_t device2MAC[6];  // Static array to retain value outside function scope
+    memset(device2MAC, 0, sizeof(device2MAC));  // Clear the array
+
+    size_t ndefStartIndex = 16;  // Start after pages 0-3 (skip the first 16 bytes)
+    size_t terminatorIndex = rawData.size();
+
+    // Find the terminator (0xFE), which indicates the end of the NDEF message
+    for (size_t i = ndefStartIndex; i < rawData.size(); ++i)
+    {
+        if (rawData[i] == 0xFE)  // Terminator found
+        {
+            terminatorIndex = i;
+            break;
+        }
+    }
+
+    // If no terminator is found, assume no NDEF message exists
+    if (terminatorIndex == rawData.size())
+    {
+        return nullptr; // No NDEF message found
+    }
+
+    size_t pos = ndefStartIndex;
+    while (pos < terminatorIndex)
+    {
+        // Look for the 0x01 marker for the start of a record
+        if (rawData[pos] == 0x01)
+        {
+            // Ensure enough data is available to match the pattern
+            if (pos + 6 >= terminatorIndex)
+            {
+                break;  // Not enough data for the pattern
+            }
+
+            // Check for the expected pattern: 0x01 _ T _ NI
+            if (rawData[pos + 2] == 'T' &&
+                rawData[pos + 4] == 0x4E &&  // 'N'
+                rawData[pos + 5] == 0x49)   // 'I'
+            {
+                // Extract the ASCII MAC address string starting at pos + 6
+                size_t macAddressStart = pos + 6;
+                size_t macAddressEnd = pos + 6;
+
+                // Find the end of the MAC address string (until the next record or terminator)
+                while (macAddressEnd < terminatorIndex && rawData[macAddressEnd] != 0xFE)
+                {
+                    macAddressEnd++;
+                }
+
+                // Extract the ASCII string
+                std::string macAscii(reinterpret_cast<const char*>(&rawData[macAddressStart]),
+                                     macAddressEnd - macAddressStart);
+
+                // Parse the ASCII string into numeric MAC address
+                size_t macIndex = 0;
+                std::istringstream macStream(macAscii);
+                std::string byte;
+
+                while (std::getline(macStream, byte, ':') && macIndex < 6)
+                {
+                    device2MAC[macIndex++] = static_cast<uint8_t>(std::stoi(byte, nullptr, 16));
+                }
+
+                // Verify if the MAC address was successfully parsed
+                if (macIndex == 6)
+                {
+
+                    return device2MAC;  // Return the parsed MAC address
+                }
+            }
+        }
+
+        pos++;  // Move to the next byte
+    }
+
+    return nullptr;  // No matching "NI" tag found
+}
 
 
 } // namespace NuggetsInc
