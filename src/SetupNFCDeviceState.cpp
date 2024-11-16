@@ -40,6 +40,19 @@ namespace NuggetsInc
         // Initialize DisplayUtils
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
 
+        displayUtils->newTerminalDisplay("Verifying NFC chip");
+
+        if (!nfcLogic->initialize())
+        {
+            displayUtils->displayMessage("PN532 not found");
+            delay(2000);
+            Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+            return;
+        }
+
+        displayUtils->addToTerminalDisplay("NFC module Found");
+        tagDetected = false;
+
         // Display initial message
         displayUtils->newTerminalDisplay("Looking For Device...");
 
@@ -84,6 +97,10 @@ namespace NuggetsInc
             }
             else if (event.type == EVENT_SELECT)
             {
+                if (macAddressFound)
+                {
+                    cloningStarted = true;
+                }
             }
         }
 
@@ -132,9 +149,62 @@ namespace NuggetsInc
             }
         }
 
-        if (macAddressFound)
+        if (macAddressFound && !cloningStarted)
         {
             displaySetupInstructions();
+        }
+
+        if (cloningStarted && !tagDetected)
+        {
+            readNFCTag();
+        }
+
+        if (tagDetected)
+        {
+            // Proceed to write tag data
+            if (nfcLogic->writeTagData(*currentTagData))
+            {
+                displayUtils->displayMessage("Tag Cloned Successfully");
+                delay(2000);
+                Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+            }
+        }
+    }
+
+     void SetupNFCDeviceState::readNFCTag()
+    {
+        if (nfcLogic->isTagPresent())
+        {
+            displayUtils->displayMessage("NFC Tag Detected: Keep steady");
+
+            TagData tag;
+            const std::vector<uint8_t> &rawData = nfcLogic->readRawData();
+            TagData NewtagData = tag.parseRawData(rawData);
+
+            int validationCode = tag.ValidateTagData(NewtagData);
+
+            if (validationCode != 0)
+            {
+                // Play a long vibration to indicate an error
+                displayUtils->displayMessage("Un-Supported Tag");
+                delay(1500);
+                return;
+            }
+            else
+            {
+                currentTagData = new TagData(NewtagData);
+                currentTagData->addTextRecord(std::string(macAddress.c_str()), "NI"); //WiteMac Adress With NI (Nuggetinc) Identifier
+            }
+
+            displayUtils->displayMessage("Verified NFC Tag");
+            delay(1500);
+            
+            tagDetected = true;
+        }
+        else
+        {
+            displayUtils->displayMessage("Searching for NFC Tag");
+            delay(100);
         }
     }
 

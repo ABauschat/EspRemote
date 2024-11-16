@@ -24,11 +24,15 @@ namespace NuggetsInc
         DisplayUtils *displayUtils;
 
         bool macAddressFound;    
-        bool readingStarted;      
+        bool readingStarted;   
+        bool cloningStarted;  
+        bool tagDetected;     
         String macAddress;
         unsigned long startTime;  
+        TagData* currentTagData;
 
         void displaySetupInstructions();
+         void readNFCTag();
     };
 
 } // namespace NuggetsInc
