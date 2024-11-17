@@ -90,8 +90,12 @@ namespace NuggetsInc
         if (esp_now_add_peer(&peerInfo) == ESP_OK)
         {
             isPeerAdded = true;
-            displayUtils->displayMessage("Peer added successfully");
-            delay(500);
+
+            struct_message outgoingMessage;
+            strcpy(outgoingMessage.messageType, "command");
+            strcpy(outgoingMessage.command, "Boop");
+            strcpy(outgoingMessage.data, "");
+            esp_now_send(device2MAC, (uint8_t *)&outgoingMessage, sizeof(outgoingMessage));
             displayUtils->clearDisplay();
         }
         else
