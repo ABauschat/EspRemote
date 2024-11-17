@@ -1,5 +1,4 @@
 //Device Remote (wireless display)
-// DisplayUtils.h
 #ifndef DISPLAYUTILS_H
 #define DISPLAYUTILS_H
 
@@ -12,14 +11,6 @@
 
 namespace NuggetsInc
 {
-
-    // Define display tabs
-    enum DisplayTab
-    {
-        TAB_DATA,
-        TAB_INFO
-    };
-
     class DisplayUtils
     {
     public:
@@ -27,10 +18,10 @@ namespace NuggetsInc
         ~DisplayUtils();
 
         // Display functions
+        void clearDisplay();
         void displayMessage(const String &message);
         void newTerminalDisplay(const String &message);
         void addToTerminalDisplay(const String &message);
-        void clearDisplay();
 
     private:
         Arduino_GFX *gfx;

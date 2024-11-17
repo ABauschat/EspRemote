@@ -1,10 +1,10 @@
-// StateFactory.cpp
 #include "StateFactory.h"
 #include "MenuState.h"
 #include "SnakeGameState.h"
 #include "ClearState.h"
 #include "CloneNFCState.h"
 #include "RemoteControlState.h"
+#include "EnterRemoteControlState.h"
 #include "SetupNFCDeviceState.h"
 
 namespace NuggetsInc {
@@ -14,8 +14,7 @@ AppState* StateFactory::createState(StateType type) {
     return new ClearState(type);
 }
 
-AppState *StateFactory::createActualState(StateType type)
-{
+AppState* StateFactory::createActualState(StateType type) {
     switch (type) {
         case MENU_STATE:
             return new MenuState();
@@ -23,14 +22,15 @@ AppState *StateFactory::createActualState(StateType type)
             return new SnakeGameState();
         case CLONE_NFC_STATE:
             return new CloneNFCState();
+        case ENTER_REMOTE_CONTROL_STATE:
+            return new EnterRemoteControlState();
         case REMOTE_CONTROL_STATE:
-            return new RemoteControlState();
+            return new RemoteControlState(); // Default instance
         case SETUP_NFC_DEVICE_STATE:
             return new SetupNFCDeviceState();
         default:
             return nullptr;
     }
-    return nullptr;
 }
 
 } // namespace NuggetsInc

@@ -85,7 +85,7 @@ void MenuState::executeSelection() {
 
     switch (menuIndex) {
         case 0: 
-            app.changeState(StateFactory::createState(REMOTE_CONTROL_STATE));
+            app.changeState(StateFactory::createState(ENTER_REMOTE_CONTROL_STATE));
             break;
         case 1: 
             app.changeState(StateFactory::createState(SETUP_NFC_DEVICE_STATE));

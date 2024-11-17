@@ -1,27 +1,26 @@
-//Device Remote (wireless display)
 #include "RemoteControlState.h"
-#include "StateFactory.h"
 #include "Application.h"
-#include "DisplayUtils.h"
-#include "Config.h"
-#include <esp_now.h>
-#include <WiFi.h>
+#include "Device.h"
 
 namespace NuggetsInc
 {
-    // Initialize the static pointer to nullptr
     RemoteControlState *RemoteControlState::activeInstance = nullptr;
 
-    RemoteControlState::RemoteControlState()
-        : nfcLogic(new NFCLogic(PN532_IRQ, PN532_RESET)),
-          isPeerAdded(false)
-    {}
+    RemoteControlState::RemoteControlState(uint8_t *macAddress)
+        : isPeerAdded(false)
+    {
+        if (macAddress)
+        {
+            memcpy(device2MAC, macAddress, sizeof(device2MAC));
+        }
+        else
+        {
+            memset(device2MAC, 0, sizeof(device2MAC));  
+        }
+    }
 
     RemoteControlState::~RemoteControlState()
     {
-        delete nfcLogic;
-        delete displayUtils;
-
         if (isPeerAdded)
         {
             esp_now_del_peer(device2MAC);
@@ -29,38 +28,19 @@ namespace NuggetsInc
 
         esp_now_deinit();
         WiFi.disconnect();
-        displayUtils = nullptr;
-        activeInstance = nullptr;
-        isPeerAdded = false;
-        memset(device2MAC, 0, sizeof(device2MAC));
     }
 
     void RemoteControlState::onEnter()
     {
-        activeInstance = this; // Set the static instance pointer
+        activeInstance = this;
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
-        displayUtils->newTerminalDisplay("Verifying NFC chip");
-
-        if (!nfcLogic->initialize())
-        {
-            displayUtils->displayMessage("PN532 not found");
-            delay(2000);
-            Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
-            return;
-        }
-
-        displayUtils->addToTerminalDisplay("NFC module Found");
-        displayUtils->clearDisplay();
 
         setupESPNow();
-        displayRemoteControlInterface();
-
-        tagDetected = false;
     }
 
     void RemoteControlState::onExit()
     {
-        activeInstance = nullptr; // Clear the static instance pointer
+        activeInstance = nullptr;
     }
 
     void RemoteControlState::update()
@@ -75,89 +55,51 @@ namespace NuggetsInc
                 Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
                 return;
             }
-            else
+
+            if (isPeerAdded)
             {
-                if (isPeerAdded)
-                {
-                    handleInput(event.type);
-                }
+                handleInput(event.type);
             }
         }
-
-        if (!tagDetected)
-        {
-            readNFCTag();
-        } 
     }
 
-void RemoteControlState::readNFCTag()
-{
-    if (nfcLogic->isTagPresent())
+    void RemoteControlState::setupESPNow()
     {
-        displayUtils->displayMessage("NFC Tag Detected: Keep steady");
+        WiFi.mode(WIFI_STA);
+        WiFi.disconnect();
 
-        TagData tag;
-        const std::vector<uint8_t> &rawData = nfcLogic->readRawData();
-        TagData NewtagData = tag.parseRawData(rawData);
-        int validationCode = tag.ValidateTagData(NewtagData);
-
-        if (validationCode != 0)
+        if (esp_now_init() != ESP_OK)
         {
-            displayUtils->displayMessage("Un-Supported Tag");
-            delay(1500);
+            displayUtils->displayMessage("ESP-NOW init failed");
             return;
+        }
+
+        esp_now_register_send_cb(onDataSentCallback);
+        esp_now_register_recv_cb(onDataRecvCallback);
+
+        esp_now_peer_info_t peerInfo = {};
+        memcpy(peerInfo.peer_addr, device2MAC, sizeof(device2MAC));
+        peerInfo.channel = 0;
+        peerInfo.encrypt = false;
+
+        if (esp_now_add_peer(&peerInfo) == ESP_OK)
+        {
+            isPeerAdded = true;
+            displayUtils->displayMessage("Peer added successfully");
         }
         else
         {
-            currentTagData = new TagData(NewtagData);
-        }
-
-        displayUtils->displayMessage("Verified NFC Tag");
-        delay(500);
-
-        uint8_t* macAddress = currentTagData->CheckForTextRecordWithNITag();
-
-        if(macAddress == nullptr)
-        {
-            displayUtils->displayMessage("No MAC Address found");
-            delay(100);
+            displayUtils->displayMessage("Error: Failed to add peer");
+            delay(1000);
             Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
-            return;
         }
-        else
-        {
-            memcpy(device2MAC, macAddress, sizeof(device2MAC));
-            displayUtils->addToTerminalDisplay("Mac Address Found");
-            delay(500);
-
-            //print mac adress
-
-            displayUtils->addToTerminalDisplay("MAC Address: ");
-            for (int i = 0; i < 6; i++)
-            {
-                displayUtils->addToTerminalDisplay(String(device2MAC[i], HEX));
-            }
-
-            delay(500);
-            displayUtils->clearDisplay();
-        }
-
-        setupESPNow();
-        tagDetected = true;
     }
-    else
-    {
-        displayUtils->displayMessage("Searching for NFC Tag");
-        delay(100);
-    }
-}
-
 
     void RemoteControlState::handleInput(EventType eventType)
     {
         if (!isPeerAdded)
         {
-            displayUtils->addToTerminalDisplay("Peer not connected");
+            displayUtils->displayMessage("Peer not connected");
             return;
         }
 
@@ -185,48 +127,12 @@ void RemoteControlState::readNFCTag()
             return;
         }
 
-        // Send the command to Device 2 using its MAC address
         if (esp_now_send(device2MAC, (uint8_t *)&outgoingMessage, sizeof(outgoingMessage)) != ESP_OK)
         {
-            displayUtils->addToTerminalDisplay("Failed to send command");
+            displayUtils->displayMessage("Failed to send command");
         }
     }
 
-    void RemoteControlState::setupESPNow()
-    {
-        WiFi.mode(WIFI_STA);
-        WiFi.disconnect();
-
-        if (esp_now_init() != ESP_OK)
-        {
-            displayUtils->displayMessage("ESP-NOW init failed");
-            return;
-        }
-
-        // Register send callback
-        esp_now_register_send_cb(onDataSentCallback);
-
-        // Register receive callback
-        esp_now_register_recv_cb(onDataRecvCallback);
-
-        // Add Device 2 as a peer
-        esp_now_peer_info_t peerInfo = {};
-        memcpy(peerInfo.peer_addr, device2MAC, sizeof(device2MAC));
-        peerInfo.channel = 0; 
-        peerInfo.encrypt = false;
-
-        if (esp_now_add_peer(&peerInfo) == ESP_OK)
-        {
-            isPeerAdded = true;
-            displayUtils->addToTerminalDisplay("Peer added successfully");
-        }
-        else
-        {
-            displayUtils->addToTerminalDisplay("Failed to add peer");
-        }
-    }
-
-    // Static send callback
     void RemoteControlState::onDataSentCallback(const uint8_t *mac_addr, esp_now_send_status_t status)
     {
         if (activeInstance)
@@ -235,7 +141,6 @@ void RemoteControlState::readNFCTag()
         }
     }
 
-    // Static receive callback
     void RemoteControlState::onDataRecvCallback(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
     {
         if (activeInstance)
@@ -246,8 +151,7 @@ void RemoteControlState::readNFCTag()
 
     void RemoteControlState::handleOnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
     {
-        String result = (status == ESP_NOW_SEND_SUCCESS) ? "Send success" : "Send failed";
-        displayUtils->addToTerminalDisplay(result);
+        displayUtils->displayMessage((status == ESP_NOW_SEND_SUCCESS) ? "Send success" : "Send failed");
     }
 
     void RemoteControlState::handleOnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
@@ -259,19 +163,12 @@ void RemoteControlState::readNFCTag()
 
             if (strcmp(incomingMessage.messageType, "response") == 0)
             {
-                String response = String(incomingMessage.command);
-                displayUtils->addToTerminalDisplay("Received: " + response);
+                displayUtils->displayMessage("Received: " + String(incomingMessage.command));
             }
         }
         else
         {
-            displayUtils->addToTerminalDisplay("Received invalid message");
+            displayUtils->displayMessage("Received invalid message");
         }
     }
-
-    void RemoteControlState::displayRemoteControlInterface()
-    {
-
-    }
-
 } // namespace NuggetsInc
