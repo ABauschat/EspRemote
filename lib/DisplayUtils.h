@@ -1,3 +1,4 @@
+//Device Remote (wireless display)
 // DisplayUtils.h
 #ifndef DISPLAYUTILS_H
 #define DISPLAYUTILS_H

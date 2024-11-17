@@ -1,3 +1,4 @@
+//Device Remote (wireless display)
 #ifndef REMOTE_CONTROL_STATE_H
 #define REMOTE_CONTROL_STATE_H
 
@@ -16,16 +17,16 @@ namespace NuggetsInc
         struct struct_message
         {
             char messageType[10];
-            char command[20]; // Increased to 20 bytes
+            char command[20]; 
         };
 
     public:
-        RemoteControlState();           // Constructor
-        ~RemoteControlState() override; // Destructor
+        RemoteControlState();           
+        ~RemoteControlState() override;
 
-        void onEnter() override; // Called when entering this state
-        void onExit() override;  // Called when exiting this state
-        void update() override;  // Called during update loop
+        void onEnter() override; 
+        void onExit() override; 
+        void update() override;  
 
     private:
         void handleInput(EventType eventType);
@@ -41,15 +42,15 @@ namespace NuggetsInc
         void handleOnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
         void handleOnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
 
-        DisplayUtils *displayUtils; // Display utility
-        NFCLogic *nfcLogic;         // NFC logic
+        DisplayUtils *displayUtils; 
+        NFCLogic *nfcLogic;        
 
-        uint8_t device2MAC[6]; // MAC address of Device 2
-        bool isPeerAdded;      // Flag to indicate if Device 2 is added as a peer
+        uint8_t device2MAC[6];
+        bool isPeerAdded;    
         bool tagDetected;
 
         TagData *currentTagData;
-        static RemoteControlState *activeInstance; // Pointer to the active instance
+        static RemoteControlState *activeInstance;
     };
 
 } // namespace NuggetsInc

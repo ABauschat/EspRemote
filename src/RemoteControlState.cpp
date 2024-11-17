@@ -1,3 +1,4 @@
+//Device Remote (wireless display)
 #include "RemoteControlState.h"
 #include "StateFactory.h"
 #include "Application.h"
@@ -51,10 +52,10 @@ namespace NuggetsInc
         displayUtils->addToTerminalDisplay("NFC module Found");
         displayUtils->clearDisplay();
 
-        tagDetected = false;
-
         setupESPNow();
         displayRemoteControlInterface();
+
+        tagDetected = false;
     }
 
     void RemoteControlState::onExit()
@@ -119,7 +120,7 @@ void RemoteControlState::readNFCTag()
         if(macAddress == nullptr)
         {
             displayUtils->displayMessage("No MAC Address found");
-            delay(1500);
+            delay(100);
             Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
             return;
         }
@@ -137,7 +138,7 @@ void RemoteControlState::readNFCTag()
                 displayUtils->addToTerminalDisplay(String(device2MAC[i], HEX));
             }
 
-            delay(9000);
+            delay(500);
             displayUtils->clearDisplay();
         }
 
