@@ -34,24 +34,18 @@ public:
     void scrollUp();
     void scrollDown();
     void DrawTabHeaders(const std::vector<Tab>& tabs, int currentIndex);
-
-    String getName() const;
-    DisplayArea getArea() const;
-    LineStyle getStyle() const;
-    std::vector<String> getLines() const;
-    String getTitle() const;
     void setNeedsRefresh(bool needsRefresh);
 
 private:
-    String name;                 // Tab name
-    DisplayArea area;            // Area on the screen where this tab is displayed
-    std::vector<String> lines;   // Original lines added to the tab
-    LineStyle style;             // Line style for the tab (none, numbered, bullets)
-    int scrollOffset;            // Scroll offset for scrolling through wrapped lines
-    Arduino_GFX* gfx;            // Graphics display pointer
-    bool tabNeedsRefresh = true; // Flag to indicate if the tab content needs to be refreshed
-    std::vector<String> wrappedLinesCache; // Cached wrapped lines
-    int maxVisibleLines;         // Maximum number of lines that can be displayed at once
+    String name;                
+    DisplayArea area;           
+    std::vector<String> lines;  
+    LineStyle style;            
+    int scrollOffset;          
+    Arduino_GFX* gfx;            
+    bool tabNeedsRefresh = true; 
+    std::vector<String> wrappedLinesCache; 
+    int maxVisibleLines;       
 
     std::vector<String> wrapText(String text, int maxWidth, String prefix = "");
     int calculateLineHeight();

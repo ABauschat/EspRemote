@@ -14,6 +14,8 @@ namespace NuggetsInc
           displayUtils(nullptr),
           macAddressFound(false),
           readingStarted(false),
+          cloningStarted(false),
+            tagDetected(false),
           startTime(0) {}
 
     SetupNFCDeviceState::~SetupNFCDeviceState()
@@ -110,7 +112,7 @@ namespace NuggetsInc
         if (!readingStarted && !macAddressFound)
         {
             readingStarted = true;
-            displayUtils->addToTerminalDisplay("Scanning For Mac Adress...");
+            displayUtils->displayMessage("Reading MAC Address. Connect Rx/Tx Pins");
             startTime = millis();
             Serial2.println("GET_MAC");
         }

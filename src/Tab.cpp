@@ -2,11 +2,10 @@
 
 namespace NuggetsInc
 {
-
     Tab::Tab(String name, DisplayArea area, Arduino_GFX *display)
         : name(name), area(area), style(STYLE_NONE), scrollOffset(0), gfx(display)
     {
-        maxVisibleLines = (area.height - 20) / calculateLineHeight(); // Subtract tab header height
+        maxVisibleLines = (area.height - 20) / calculateLineHeight(); 
     }
 
     void Tab::setStyle(LineStyle newStyle)
@@ -36,7 +35,7 @@ namespace NuggetsInc
 
     int Tab::calculateLineHeight()
     {
-        return 20; // Adjust based on your font size
+        return 20;
     }
 
     std::vector<String> Tab::wrapText(String text, int maxWidth, String prefix)
@@ -54,11 +53,9 @@ namespace NuggetsInc
 
             if (w > maxWidth)
             {
-                // Remove the last character and store the line
                 currentLine.remove(currentLine.length() - 1);
                 wrappedLines.push_back(currentLine);
 
-                // Start a new line with the current character
                 currentLine = prefix + text[i];
             }
         }
@@ -78,10 +75,8 @@ namespace NuggetsInc
 
         clearTab();
 
-        // Draw tab headers within the DisplayArea
         DrawTabHeaders({*this}, 0);
 
-        // Prepare wrapped lines
         wrappedLinesCache.clear();
         for (size_t i = 0; i < lines.size(); ++i)
         {
@@ -104,16 +99,14 @@ namespace NuggetsInc
 
         int lineHeight = calculateLineHeight();
 
-        // Recalculate maxVisibleLines in case area.height has changed
-        maxVisibleLines = (area.height - 20) / lineHeight; // Subtract tab header height
+        maxVisibleLines = (area.height - 20) / lineHeight; 
 
-        // Clamp scrollOffset to valid range
         clampScrollOffset();
 
         int startLine = scrollOffset;
         int endLine = std::min(startLine + maxVisibleLines, static_cast<int>(wrappedLinesCache.size()));
 
-        int cursorY = area.y + 20; // Start below tab headers
+        int cursorY = area.y + 20;
 
         for (int i = startLine; i < endLine; ++i)
         {
@@ -136,10 +129,8 @@ namespace NuggetsInc
             uint16_t bgColor = (i == currentIndex) ? COLOR_ORANGE : COLOR_WHEAT_CREAM;
             uint16_t textColor = COLOR_WHITE;
 
-            // Draw the tab background within the DisplayArea
             gfx->fillRect(x, area.y, tabWidth, tabHeight, bgColor);
 
-            // Draw the tab name centered
             int16_t x1, y1;
             uint16_t w, h;
             gfx->setTextSize(2);
@@ -188,34 +179,9 @@ namespace NuggetsInc
         }
     }
 
-    String Tab::getName() const
-    {
-        return name;
-    }
-
-    DisplayArea Tab::getArea() const
-    {
-        return area;
-    }
-
-    LineStyle Tab::getStyle() const
-    {
-        return style;
-    }
-
-    std::vector<String> Tab::getLines() const
-    {
-        return lines;
-    }
-
-    String Tab::getTitle() const
-    {
-        return name;
-    }
-
     void Tab::setNeedsRefresh(bool needsRefresh)
-{
-    tabNeedsRefresh = needsRefresh;
-}
+    {
+        tabNeedsRefresh = needsRefresh;
+    }
 
 } // namespace NuggetsInc
