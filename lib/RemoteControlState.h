@@ -12,10 +12,11 @@ namespace NuggetsInc
 {
     class RemoteControlState : public AppState
     {
-        struct struct_message
+         struct struct_message
         {
-            char messageType[10];
-            char command[20];
+            char messageType[10]; 
+            char command[20];    
+            char data[50];       
         };
 
     public:

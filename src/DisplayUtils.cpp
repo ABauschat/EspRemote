@@ -39,4 +39,36 @@ void DisplayUtils::addToTerminalDisplay(const String& message) {
     gfx->println(message);
 }
 
+void DisplayUtils::println(const String& message) {
+    gfx->println(message);
+}
+
+void DisplayUtils::print(const String& message) {
+    gfx->print(message);
+}
+
+void DisplayUtils::setCursor(int16_t x, int16_t y) {
+    gfx->setCursor(x, y);
+}
+
+void DisplayUtils::setTextSize(uint8_t size) {
+    gfx->setTextSize(size);
+}
+
+void DisplayUtils::setTextColor(uint16_t color) {
+    gfx->setTextColor(color);
+}
+
+void DisplayUtils::fillScreen(uint16_t color) {
+    gfx->fillScreen(color);
+}
+
+void DisplayUtils::drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
+    gfx->drawRect(x, y, w, h, color);
+}
+
+void DisplayUtils::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
+    gfx->fillRect(x, y, w, h, color);
+}
+
 } // namespace NuggetsInc

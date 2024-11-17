@@ -15,7 +15,7 @@ namespace NuggetsInc
         }
         else
         {
-            memset(device2MAC, 0, sizeof(device2MAC));  
+            memset(device2MAC, 0, sizeof(device2MAC));
         }
     }
 
@@ -151,7 +151,7 @@ namespace NuggetsInc
 
     void RemoteControlState::handleOnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
     {
-        displayUtils->displayMessage((status == ESP_NOW_SEND_SUCCESS) ? "Send success" : "Send failed");
+        // Do Nothing for Now
     }
 
     void RemoteControlState::handleOnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
@@ -164,7 +164,7 @@ namespace NuggetsInc
             if (strcmp(incomingMessage.messageType, "response") == 0)
             {
                 displayUtils->displayMessage("Received: " + String(incomingMessage.command));
-            }
+            } 
         }
         else
         {
