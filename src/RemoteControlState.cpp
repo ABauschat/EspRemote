@@ -91,6 +91,8 @@ namespace NuggetsInc
         {
             isPeerAdded = true;
             displayUtils->displayMessage("Peer added successfully");
+            delay(500);
+            displayUtils->clearDisplay();
         }
         else
         {
