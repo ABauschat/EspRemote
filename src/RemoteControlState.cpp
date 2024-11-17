@@ -7,7 +7,7 @@ namespace NuggetsInc
     RemoteControlState *RemoteControlState::activeInstance = nullptr;
 
     RemoteControlState::RemoteControlState(uint8_t *macAddress)
-        : isPeerAdded(false)
+        : isPeerAdded(false), displayUtils(nullptr)
     {
         if (macAddress)
         {
@@ -28,13 +28,18 @@ namespace NuggetsInc
 
         esp_now_deinit();
         WiFi.disconnect();
+
+        if (displayUtils)
+        {
+            delete displayUtils;
+            displayUtils = nullptr;
+        }
     }
 
     void RemoteControlState::onEnter()
     {
         activeInstance = this;
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
-
         setupESPNow();
     }
 
@@ -151,7 +156,35 @@ namespace NuggetsInc
 
     void RemoteControlState::handleOnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
     {
-        // Do Nothing for Now
+    }
+
+    RemoteControlState::CommandType RemoteControlState::mapCommandStringToEnum(const char *command)
+    {
+        if (strcmp(command, "CLEAR_DISPLAY") == 0)
+            return CommandType::CLEAR_DISPLAY;
+        if (strcmp(command, "DISPLAY_MESSAGE") == 0)
+            return CommandType::DISPLAY_MESSAGE;
+        if (strcmp(command, "NEW_TERMINAL_DISPLAY") == 0)
+            return CommandType::NEW_TERMINAL_DISPLAY;
+        if (strcmp(command, "ADD_TO_TERMINAL_DISPLAY") == 0)
+            return CommandType::ADD_TO_TERMINAL_DISPLAY;
+        if (strcmp(command, "PRINTLN") == 0)
+            return CommandType::PRINTLN;
+        if (strcmp(command, "PRINT") == 0)
+            return CommandType::PRINT;
+        if (strcmp(command, "SET_CURSOR") == 0)
+            return CommandType::SET_CURSOR;
+        if (strcmp(command, "SET_TEXT_SIZE") == 0)
+            return CommandType::SET_TEXT_SIZE;
+        if (strcmp(command, "SET_TEXT_COLOR") == 0)
+            return CommandType::SET_TEXT_COLOR;
+        if (strcmp(command, "FILL_SCREEN") == 0)
+            return CommandType::FILL_SCREEN;
+        if (strcmp(command, "DRAW_RECT") == 0)
+            return CommandType::DRAW_RECT;
+        if (strcmp(command, "FILL_RECT") == 0)
+            return CommandType::FILL_RECT;
+        return CommandType::UNKNOWN;
     }
 
     void RemoteControlState::handleOnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
@@ -161,14 +194,184 @@ namespace NuggetsInc
         {
             memcpy(&incomingMessage, incomingData, sizeof(incomingMessage));
 
-            if (strcmp(incomingMessage.messageType, "response") == 0)
+            incomingMessage.messageType[sizeof(incomingMessage.messageType) - 1] = '\0';
+            incomingMessage.command[sizeof(incomingMessage.command) - 1] = '\0';
+            incomingMessage.data[sizeof(incomingMessage.data) - 1] = '\0';
+
+            if (strcmp(incomingMessage.messageType, "command") == 0)
             {
-                displayUtils->displayMessage("Received: " + String(incomingMessage.command));
-            } 
+                Serial.print("Received command: ");
+                Serial.println(incomingMessage.command);
+
+                CommandType cmdType = mapCommandStringToEnum(incomingMessage.command);
+
+                switch (cmdType)
+                {
+                case CommandType::CLEAR_DISPLAY:
+                    handleClearDisplay();
+                    break;
+                case CommandType::DISPLAY_MESSAGE:
+                    if (strlen(incomingMessage.data) > 0)
+                        handleDisplayMessage(String(incomingMessage.data));
+                    break;
+                case CommandType::NEW_TERMINAL_DISPLAY:
+                    if (strlen(incomingMessage.data) > 0)
+                        handleNewTerminalDisplay(String(incomingMessage.data));
+                    break;
+                case CommandType::ADD_TO_TERMINAL_DISPLAY:
+                    if (strlen(incomingMessage.data) > 0)
+                        handleAddToTerminalDisplay(String(incomingMessage.data));
+                    break;
+                case CommandType::PRINTLN:
+                    if (strlen(incomingMessage.data) > 0)
+                        handlePrintln(String(incomingMessage.data));
+                    break;
+                case CommandType::PRINT:
+                    if (strlen(incomingMessage.data) > 0)
+                        handlePrint(String(incomingMessage.data));
+                    break;
+                case CommandType::SET_CURSOR:
+                    handleSetCursor(incomingMessage.data);
+                    break;
+                case CommandType::SET_TEXT_SIZE:
+                    handleSetTextSize(incomingMessage.data);
+                    break;
+                case CommandType::SET_TEXT_COLOR:
+                    handleSetTextColor(incomingMessage.data);
+                    break;
+                case CommandType::FILL_SCREEN:
+                    handleFillScreen(incomingMessage.data);
+                    break;
+                case CommandType::DRAW_RECT:
+                    handleDrawRect(incomingMessage.data);
+                    break;
+                case CommandType::FILL_RECT:
+                    handleFillRect(incomingMessage.data);
+                    break;
+                case CommandType::UNKNOWN:
+                default:
+                    Serial.print("Unknown command received: ");
+                    Serial.println(incomingMessage.command);
+                    break;
+                }
+            }
+            else
+            {
+                displayUtils->displayMessage("Unknown message type received.");
+            }
         }
         else
         {
             displayUtils->displayMessage("Received invalid message");
         }
     }
+
+    void RemoteControlState::handleClearDisplay()
+    {
+        displayUtils->clearDisplay();
+    }
+
+    void RemoteControlState::handleDisplayMessage(const String &message)
+    {
+        displayUtils->displayMessage(message);
+    }
+
+    void RemoteControlState::handleNewTerminalDisplay(const String &message)
+    {
+        displayUtils->newTerminalDisplay(message);
+    }
+
+    void RemoteControlState::handleAddToTerminalDisplay(const String &message)
+    {
+        displayUtils->addToTerminalDisplay(message);
+    }
+
+    void RemoteControlState::handlePrintln(const String &message)
+    {
+        displayUtils->println(message);
+    }
+
+    void RemoteControlState::handlePrint(const String &message)
+    {
+        displayUtils->print(message);
+    }
+
+    void RemoteControlState::handleSetCursor(const char *data)
+    {
+        int x, y;
+        if (sscanf(data, "%d,%d", &x, &y) == 2)
+        {
+            displayUtils->setCursor(x, y);
+        }
+        else
+        {
+            displayUtils->displayMessage("Invalid SET_CURSOR data");
+        }
+    }
+
+    void RemoteControlState::handleSetTextSize(const char *data)
+    {
+        int size;
+        if (sscanf(data, "%d", &size) == 1 && size > 0)
+        {
+            displayUtils->setTextSize(static_cast<uint8_t>(size));
+        }
+        else
+        {
+            displayUtils->displayMessage("Invalid SET_TEXT_SIZE data");
+        }
+    }
+
+    void RemoteControlState::handleSetTextColor(const char *data)
+    {
+        int color;
+        if (sscanf(data, "%d", &color) == 1)
+        {
+            displayUtils->setTextColor(static_cast<uint16_t>(color));
+        }
+        else
+        {
+            displayUtils->displayMessage("Invalid SET_TEXT_COLOR data");
+        }
+    }
+
+    void RemoteControlState::handleFillScreen(const char *data)
+    {
+        int color;
+        if (sscanf(data, "%d", &color) == 1)
+        {
+            displayUtils->fillScreen(static_cast<uint16_t>(color));
+        }
+        else
+        {
+            displayUtils->displayMessage("Invalid FILL_SCREEN data");
+        }
+    }
+
+    void RemoteControlState::handleDrawRect(const char *data)
+    {
+        int x, y, w, h, color;
+        if (sscanf(data, "%d,%d,%d,%d,%d", &x, &y, &w, &h, &color) == 5)
+        {
+            displayUtils->drawRect(x, y, w, h, static_cast<uint16_t>(color));
+        }
+        else
+        {
+            displayUtils->displayMessage("Invalid DRAW_RECT data");
+        }
+    }
+
+    void RemoteControlState::handleFillRect(const char *data)
+    {
+        int x, y, w, h, color;
+        if (sscanf(data, "%d,%d,%d,%d,%d", &x, &y, &w, &h, &color) == 5)
+        {
+            displayUtils->fillRect(x, y, w, h, static_cast<uint16_t>(color));
+        }
+        else
+        {
+            displayUtils->displayMessage("Invalid FILL_RECT data");
+        }
+    }
+
 } // namespace NuggetsInc
