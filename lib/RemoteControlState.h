@@ -1,3 +1,4 @@
+// RemoteControlState.h
 #ifndef REMOTE_CONTROL_STATE_H
 #define REMOTE_CONTROL_STATE_H
 
@@ -12,13 +13,17 @@ namespace NuggetsInc
 {
     class RemoteControlState : public AppState
     {
+    public:
+        // Define the message structure
         struct struct_message
         {
+            uint32_t messageID;     // Unique ID for each message
             char messageType[10];
             char command[20];
             char data[50];
         };
 
+        // Define command types
         enum class CommandType
         {
             CLEAR_DISPLAY,
@@ -36,7 +41,6 @@ namespace NuggetsInc
             UNKNOWN
         };
 
-    public:
         RemoteControlState(uint8_t *macAddress = nullptr);
         ~RemoteControlState() override;
 
@@ -56,6 +60,7 @@ namespace NuggetsInc
 
         CommandType mapCommandStringToEnum(const char* command);
 
+        // Command handlers
         void handleClearDisplay();
         void handleDisplayMessage(const String& message);
         void handleNewTerminalDisplay(const String& message);

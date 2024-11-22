@@ -1,3 +1,4 @@
+// RemoteControlState.cpp
 #include "RemoteControlState.h"
 #include "Application.h"
 #include "Device.h"
@@ -92,6 +93,7 @@ namespace NuggetsInc
             isPeerAdded = true;
 
             struct_message outgoingMessage;
+            outgoingMessage.messageID = millis();
             strcpy(outgoingMessage.messageType, "command");
             strcpy(outgoingMessage.command, "Boop");
             strcpy(outgoingMessage.data, "");
@@ -115,6 +117,7 @@ namespace NuggetsInc
         }
 
         struct_message outgoingMessage;
+        outgoingMessage.messageID = millis();
         strcpy(outgoingMessage.messageType, "command");
 
         switch (eventType)
@@ -162,6 +165,7 @@ namespace NuggetsInc
 
     void RemoteControlState::handleOnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
     {
+        // Optional: Handle send status if needed
     }
 
     RemoteControlState::CommandType RemoteControlState::mapCommandStringToEnum(const char *command)
@@ -198,8 +202,9 @@ namespace NuggetsInc
         struct_message incomingMessage;
         if (len >= sizeof(struct_message))
         {
-            memcpy(&incomingMessage, incomingData, sizeof(incomingMessage));
+            memcpy(&incomingMessage, incomingData, sizeof(struct_message));
 
+            // Ensure null-termination
             incomingMessage.messageType[sizeof(incomingMessage.messageType) - 1] = '\0';
             incomingMessage.command[sizeof(incomingMessage.command) - 1] = '\0';
             incomingMessage.data[sizeof(incomingMessage.data) - 1] = '\0';
@@ -260,6 +265,23 @@ namespace NuggetsInc
                     Serial.println(incomingMessage.command);
                     break;
                 }
+
+                // Send ACK back to sender
+                struct_message ackMessage;
+                ackMessage.messageID = incomingMessage.messageID; // Copy the messageID
+                strcpy(ackMessage.messageType, "ack");
+                ackMessage.command[0] = '\0';
+                ackMessage.data[0] = '\0';
+
+                esp_err_t result = esp_now_send(mac_addr, (uint8_t *)&ackMessage, sizeof(ackMessage));
+                if (result != ESP_OK)
+                {
+                    Serial.println("Failed to send ACK");
+                }
+                else
+                {
+                    Serial.println("ACK sent");
+                }
             }
             else
             {
@@ -271,6 +293,8 @@ namespace NuggetsInc
             displayUtils->displayMessage("Received invalid message");
         }
     }
+
+    // Command handler implementations
 
     void RemoteControlState::handleClearDisplay()
     {
@@ -379,5 +403,4 @@ namespace NuggetsInc
             displayUtils->displayMessage("Invalid FILL_RECT data");
         }
     }
-
 } // namespace NuggetsInc
