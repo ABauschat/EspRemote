@@ -285,7 +285,7 @@ namespace NuggetsInc
             }
             else
             {
-                displayUtils->displayMessage("Unknown message type received.");
+                //displayUtils->displayMessage("Unknown message type received.");
             }
         }
         else
