@@ -5,6 +5,7 @@
 #include "Colors.h"
 #include "Config.h"
 #include <Wire.h>
+#include "Haptics.h"
 
 namespace NuggetsInc
 {
@@ -142,6 +143,8 @@ namespace NuggetsInc
 
                     displayUtils->addToTerminalDisplay("Device Found!");
                     displayUtils->addToTerminalDisplay("MAC Address: " + macAddress);
+
+                    Haptics::getInstance().doubleVibration();
 
                     macAddressFound = true;
                     readingStarted = false;

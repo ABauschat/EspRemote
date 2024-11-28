@@ -1,4 +1,5 @@
 #include "Device.h"
+#include "Haptics.h"
 
 namespace NuggetsInc {
 
@@ -31,6 +32,10 @@ void Device::init() {
     // Set maximum brightness
     setBrightness(255);
 
+    // Initialize haptic feedback
+    pinMode(VIBRATOR_PIN, OUTPUT);
+    digitalWrite(VIBRATOR_PIN, LOW);
+
     // Initialize joystick buttons
     pinMode(JOY_UP_PIN, INPUT_PULLUP);
     pinMode(JOY_DOWN_PIN, INPUT_PULLUP);
@@ -39,6 +44,17 @@ void Device::init() {
     pinMode(JOY_CENTER_PIN, INPUT_PULLUP);
     pinMode(SET_BUTTON_PIN, INPUT_PULLUP);
     pinMode(BACK_BUTTON_PIN, INPUT_PULLUP);
+
+    // Start the haptics task
+    Haptics::getInstance().begin();
+}
+
+void Device::startVibration() {
+    digitalWrite(VIBRATOR_PIN, HIGH);
+}
+
+void Device::stopVibration() {
+    digitalWrite(VIBRATOR_PIN, LOW);
 }
 
 Arduino_GFX* Device::getDisplay() {

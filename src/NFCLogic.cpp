@@ -3,6 +3,7 @@
 #include "Colors.h"
 #include <Wire.h>
 #include "Config.h"
+#include "Haptics.h"
 
 namespace NuggetsInc
 {
@@ -31,12 +32,13 @@ namespace NuggetsInc
         uint8_t uid[7];
         uint8_t uidLength = 0;
 
-        // Add A Single Vibrator Buzz:: Future Implementation
         return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100);
     }
 
     const std::vector<uint8_t> &NFCLogic::readRawData()
     {
+       Haptics::getInstance().singleVibration();
+
         static std::vector<uint8_t> rawData;
         rawData.clear();
 
@@ -112,6 +114,8 @@ namespace NuggetsInc
             return rawData;
         }
 
+         Haptics::getInstance().doubleVibration();
+
         return rawData;
     }
 
@@ -123,6 +127,8 @@ namespace NuggetsInc
             // Optionally, display a message or handle the absence of a tag
             return false;
         }
+
+        Haptics::getInstance().singleVibration();
 
         // Start writing from page 4 (user memory area)
         size_t startPage = 4;
@@ -202,6 +208,8 @@ namespace NuggetsInc
                 return false; // Verification failed
             }
         }
+
+        Haptics::getInstance().doubleVibration();
 
         return true; // Successfully written all pages
     }

@@ -3,6 +3,7 @@
 #include "Sounds.h"
 #include "StateFactory.h"
 #include "Application.h"
+#include "Haptics.h"
 
 namespace NuggetsInc {
 
@@ -167,7 +168,8 @@ void SnakeGameState::updateSnake() {
             snakeLength++;
         }
         spawnApple();
-        Sounds::getInstance().playTone(1000, 100);
+        //Sounds::getInstance().playTone(1000, 100);
+        Haptics::getInstance().singleVibration();
         updateScore = true;
     }
 
@@ -213,6 +215,8 @@ void SnakeGameState::drawGame() {
 
 void SnakeGameState::gameOver() {
     EventManager::getInstance().clearEvents();  
+
+    Haptics::getInstance().doubleVibration();
 
     Arduino_GFX* gfx = Device::getInstance().getDisplay();
     gfx->fillScreen(BLACK);

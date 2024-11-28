@@ -25,6 +25,9 @@ public:
     void setBrightness(uint8_t value);
     void playTone(uint32_t frequency, uint32_t duration);
 
+    void startVibration();
+    void stopVibration();
+
     // Update device state and generate events
     void update();
 
