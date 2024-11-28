@@ -14,12 +14,12 @@ enum EventType {
     EVENT_RIGHT,
     EVENT_SELECT,
     EVENT_BACK,
-    // Add other event types as needed
+    EVENT_ACTION_ONE,
+    EVENT_ACTION_TWO
 };
 
 struct Event {
     EventType type;
-    // Additional event data can be added here
 };
 
 class EventManager {

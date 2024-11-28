@@ -1,5 +1,6 @@
 #include "Device.h"
 #include "Haptics.h"
+#include "esp_sleep.h"
 
 namespace NuggetsInc {
 
@@ -10,7 +11,8 @@ Device& Device::getInstance() {
 
 Device::Device()
     : upPressed(false), downPressed(false), leftPressed(false),
-      rightPressed(false), selectPressed(false), backPressed(false) {
+      rightPressed(false), selectPressed(false), backPressed(false),
+      lastBackButtonPressTime(0) {
     // Initialize the data bus and graphics objects
     bus = new Arduino_ESP32QSPI(6, 47, 18, 7, 48, 5);
     gfx = new Arduino_RM67162(bus, 17, 3);
@@ -44,6 +46,8 @@ void Device::init() {
     pinMode(JOY_CENTER_PIN, INPUT_PULLUP);
     pinMode(SET_BUTTON_PIN, INPUT_PULLUP);
     pinMode(BACK_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(ACTION_ONE_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(ACTION_TWO_BUTTON_PIN, INPUT_PULLUP);
 
     // Start the haptics task
     Haptics::getInstance().begin();
@@ -129,12 +133,53 @@ void Device::update() {
         selectPressed = false;
     }
 
-    if (digitalRead(BACK_BUTTON_PIN) == LOW && !backPressed) {
+ if (digitalRead(BACK_BUTTON_PIN) == LOW && !backPressed) {
         backPressed = true;
-        eventManager.queueEvent({EVENT_BACK});
+        unsigned long now = millis();
+
+        if (now - lastBackButtonPressTime < doublePressThreshold) {
+            // Double press detected
+            goToDeepSleep();
+        } else {
+            // Single press
+            lastBackButtonPressTime = now;
+            eventManager.queueEvent({EVENT_BACK});
+        }
     } else if (digitalRead(BACK_BUTTON_PIN) == HIGH) {
         backPressed = false;
     }
+
+    if (digitalRead(ACTION_ONE_BUTTON_PIN) == LOW && !actionOnePressed) {
+        actionOnePressed = true;
+        eventManager.queueEvent({EVENT_ACTION_ONE});
+    } else if (digitalRead(ACTION_ONE_BUTTON_PIN) == HIGH) {
+        actionOnePressed = false;
+    }
+
+    if (digitalRead(ACTION_TWO_BUTTON_PIN) == LOW && !actionTwoPressed) {
+        actionTwoPressed = true;
+        eventManager.queueEvent({EVENT_ACTION_TWO});
+    } else if (digitalRead(ACTION_TWO_BUTTON_PIN) == HIGH) {
+        actionTwoPressed = false;
+    }
+}
+
+void Device::goToDeepSleep() {
+    // Perform necessary cleanup
+    Haptics::getInstance().end();
+
+    // Configure the wake-up source: BACK_BUTTON_PIN (e.g., GPIO0) on LOW level
+    esp_sleep_enable_ext0_wakeup(static_cast<gpio_num_t>(BACK_BUTTON_PIN), 0);
+
+    // Provide feedback before sleeping (optional)
+    startVibration();
+    delay(500);
+    stopVibration();
+
+    // Enter deep sleep
+    esp_deep_sleep_start();
+
+    // Code after esp_deep_sleep_start() will not be executed
 }
 
 } // namespace NuggetsInc

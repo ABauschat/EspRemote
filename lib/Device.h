@@ -28,6 +28,8 @@ public:
     void startVibration();
     void stopVibration();
 
+    void goToDeepSleep();
+
     // Update device state and generate events
     void update();
 
@@ -68,10 +70,12 @@ private:
     bool rightPressed;
     bool selectPressed;
     bool backPressed;
+    bool actionOnePressed;
+    bool actionTwoPressed;
 
     // Variables for long press detection
-    unsigned long backButtonPressTime;
-    bool backButtonLongPressDetected;
+     unsigned long lastBackButtonPressTime;  
+    const unsigned long doublePressThreshold = 500;
 };
 
 } // namespace NuggetsInc
