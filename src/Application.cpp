@@ -25,6 +25,7 @@ void Application::init() {
 
     // Play the startup melody
     //Sounds::getInstance().playMelody();
+    //delay(2000); // Delay to allow the melody to play
 
     // Start with the menu state
     changeState(StateFactory::createState(MENU_STATE));
