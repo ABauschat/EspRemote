@@ -47,7 +47,7 @@ namespace NuggetsInc
 
         while (eventManager.getNextEvent(event))
         {
-            if (event.type == EVENT_BACK)
+            if (event.type == EVENT_BACK || event.type == EVENT_ACTION_TWO)
             {
                 Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
                 return;

@@ -85,7 +85,7 @@ private:
     unsigned long lastActionOnePressTime;
     unsigned long lastActionTwoPressTime;
     
-    const unsigned long debounceInterval = 150; 
+    const unsigned long debounceInterval = 200; 
 
     // Variables for long press detection
     unsigned long lastBackButtonPressTime;  

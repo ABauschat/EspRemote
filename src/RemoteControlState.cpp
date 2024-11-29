@@ -134,8 +134,11 @@ namespace NuggetsInc
         case EVENT_RIGHT:
             strcpy(outgoingMessage.command, "MOVE_RIGHT");
             break;
-        case EVENT_SELECT:
+        case EVENT_ACTION_ONE:
             strcpy(outgoingMessage.command, "SELECT");
+            break;
+        case EVENT_ACTION_TWO:
+            strcpy(outgoingMessage.command, "BACK");
             break;
         default:
             return;

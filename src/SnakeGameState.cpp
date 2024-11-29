@@ -47,6 +47,7 @@ void SnakeGameState::update() {
                 if (snakeDirection != 3)
                     snakeDirection = 1;
                 break;
+            case EVENT_ACTION_TWO:
             case EVENT_BACK:
                 Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
                 return;

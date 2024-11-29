@@ -20,6 +20,7 @@ enum EventType {
 
 struct Event {
     EventType type;
+    // Additional event data can be added here
 };
 
 class EventManager {

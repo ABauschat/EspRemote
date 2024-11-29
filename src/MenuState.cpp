@@ -51,10 +51,10 @@ void MenuState::update() {
                     menuIndex = 0;
                 displayMenu();
                 break;
-            case EVENT_SELECT:
+            case EVENT_ACTION_ONE:
                 executeSelection();
                 break;
-            case EVENT_BACK:
+            case EVENT_ACTION_TWO:
                 break;
             default:
                 break;
