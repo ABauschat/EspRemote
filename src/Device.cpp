@@ -1,3 +1,5 @@
+// Device.cpp
+
 #include "Device.h"
 #include "Haptics.h"
 #include "esp_sleep.h"
@@ -12,6 +14,10 @@ Device& Device::getInstance() {
 Device::Device()
     : upPressed(false), downPressed(false), leftPressed(false),
       rightPressed(false), selectPressed(false), backPressed(false),
+      actionOnePressed(false), actionTwoPressed(false),
+      lastUpPressTime(0), lastDownPressTime(0), lastLeftPressTime(0),
+      lastRightPressTime(0), lastSelectPressTime(0), lastBackPressTime(0),
+      lastActionOnePressTime(0), lastActionTwoPressTime(0),
       lastBackButtonPressTime(0) {
     // Initialize the data bus and graphics objects
     bus = new Arduino_ESP32QSPI(6, 47, 18, 7, 48, 5);
@@ -96,72 +102,50 @@ void Device::playTone(uint32_t frequency, uint32_t duration) {
 
 void Device::update() {
     EventManager& eventManager = EventManager::getInstance();
+    unsigned long currentTime = millis();
 
-    // Read joystick inputs and generate events
-    if (digitalRead(JOY_UP_PIN) == LOW && !upPressed) {
-        upPressed = true;
-        eventManager.queueEvent({EVENT_UP});
-    } else if (digitalRead(JOY_UP_PIN) == HIGH) {
-        upPressed = false;
-    }
-
-    if (digitalRead(JOY_DOWN_PIN) == LOW && !downPressed) {
-        downPressed = true;
-        eventManager.queueEvent({EVENT_DOWN});
-    } else if (digitalRead(JOY_DOWN_PIN) == HIGH) {
-        downPressed = false;
-    }
-
-    if (digitalRead(JOY_LEFT_PIN) == LOW && !leftPressed) {
-        leftPressed = true;
-        eventManager.queueEvent({EVENT_LEFT});
-    } else if (digitalRead(JOY_LEFT_PIN) == HIGH) {
-        leftPressed = false;
-    }
-
-    if (digitalRead(JOY_RIGHT_PIN) == LOW && !rightPressed) {
-        rightPressed = true;
-        eventManager.queueEvent({EVENT_RIGHT});
-    } else if (digitalRead(JOY_RIGHT_PIN) == HIGH) {
-        rightPressed = false;
-    }
-
-    if (digitalRead(SET_BUTTON_PIN) == LOW && !selectPressed) {
-        selectPressed = true;
-        eventManager.queueEvent({EVENT_SELECT});
-    } else if (digitalRead(SET_BUTTON_PIN) == HIGH) {
-        selectPressed = false;
-    }
-
- if (digitalRead(BACK_BUTTON_PIN) == LOW && !backPressed) {
-        backPressed = true;
-        unsigned long now = millis();
-
-        if (now - lastBackButtonPressTime < doublePressThreshold) {
-            // Double press detected
-            goToDeepSleep();
-        } else {
-            // Single press
-            lastBackButtonPressTime = now;
-            eventManager.queueEvent({EVENT_BACK});
+    // Macro to simplify debounce handling
+    #define DEBOUNCE_BUTTON(pin, pressedFlag, lastPressTime, event) \
+        if (digitalRead(pin) == LOW) { \
+            if (!pressedFlag && (currentTime - lastPressTime >= debounceInterval)) { \
+                pressedFlag = true; \
+                lastPressTime = currentTime; \
+                eventManager.queueEvent({event}); \
+            } \
+        } else { \
+            pressedFlag = false; \
         }
-    } else if (digitalRead(BACK_BUTTON_PIN) == HIGH) {
+
+    // Handle each button with debounce
+    DEBOUNCE_BUTTON(JOY_UP_PIN, upPressed, lastUpPressTime, EVENT_UP);
+    DEBOUNCE_BUTTON(JOY_DOWN_PIN, downPressed, lastDownPressTime, EVENT_DOWN);
+    DEBOUNCE_BUTTON(JOY_LEFT_PIN, leftPressed, lastLeftPressTime, EVENT_LEFT);
+    DEBOUNCE_BUTTON(JOY_RIGHT_PIN, rightPressed, lastRightPressTime, EVENT_RIGHT);
+    DEBOUNCE_BUTTON(SET_BUTTON_PIN, selectPressed, lastSelectPressTime, EVENT_SELECT);
+    DEBOUNCE_BUTTON(ACTION_ONE_BUTTON_PIN, actionOnePressed, lastActionOnePressTime, EVENT_ACTION_ONE);
+    DEBOUNCE_BUTTON(ACTION_TWO_BUTTON_PIN, actionTwoPressed, lastActionTwoPressTime, EVENT_ACTION_TWO);
+
+    // Special handling for BACK_BUTTON_PIN due to double press detection
+    if (digitalRead(BACK_BUTTON_PIN) == LOW) {
+        if (!backPressed && (currentTime - lastBackPressTime >= debounceInterval)) {
+            backPressed = true;
+            unsigned long now = millis();
+
+            if (now - lastBackButtonPressTime < doublePressThreshold) {
+                // Double press detected
+                goToDeepSleep();
+            } else {
+                // Single press
+                lastBackButtonPressTime = now;
+                eventManager.queueEvent({EVENT_BACK});
+            }
+            lastBackPressTime = currentTime;
+        }
+    } else {
         backPressed = false;
     }
 
-    if (digitalRead(ACTION_ONE_BUTTON_PIN) == LOW && !actionOnePressed) {
-        actionOnePressed = true;
-        eventManager.queueEvent({EVENT_ACTION_ONE});
-    } else if (digitalRead(ACTION_ONE_BUTTON_PIN) == HIGH) {
-        actionOnePressed = false;
-    }
-
-    if (digitalRead(ACTION_TWO_BUTTON_PIN) == LOW && !actionTwoPressed) {
-        actionTwoPressed = true;
-        eventManager.queueEvent({EVENT_ACTION_TWO});
-    } else if (digitalRead(ACTION_TWO_BUTTON_PIN) == HIGH) {
-        actionTwoPressed = false;
-    }
+    #undef DEBOUNCE_BUTTON
 }
 
 void Device::goToDeepSleep() {

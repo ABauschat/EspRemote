@@ -1,3 +1,5 @@
+// Device.h
+
 #ifndef DEVICE_H
 #define DEVICE_H
 
@@ -73,8 +75,20 @@ private:
     bool actionOnePressed;
     bool actionTwoPressed;
 
+    // Debounce tracking
+    unsigned long lastUpPressTime;
+    unsigned long lastDownPressTime;
+    unsigned long lastLeftPressTime;
+    unsigned long lastRightPressTime;
+    unsigned long lastSelectPressTime;
+    unsigned long lastBackPressTime;
+    unsigned long lastActionOnePressTime;
+    unsigned long lastActionTwoPressTime;
+    
+    const unsigned long debounceInterval = 150; 
+
     // Variables for long press detection
-     unsigned long lastBackButtonPressTime;  
+    unsigned long lastBackButtonPressTime;  
     const unsigned long doublePressThreshold = 500;
 };
 
