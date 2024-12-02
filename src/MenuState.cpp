@@ -12,10 +12,23 @@ namespace NuggetsInc {
 MenuState::MenuState()
     : menuIndex(0),
       displayUtils(nullptr) {
-    menu[0] = "Connect To Device";
-    menu[1] = "Setup NFC Chip";
-    menu[2] = "Clone NFC Chip";
-    menu[3] = "Play Snake Game";
+        
+
+    // ESP-Connect
+    // Remote Control
+    // NFC Options
+    // IR Options
+    // APPS
+    // Settings
+    // Power
+
+    menu[0] = "ESP-Connect";
+    menu[1] = "Remote Control";
+    menu[2] = "NFC Options";
+    menu[3] = "IR Options";
+    menu[4] = "Applications";
+    menu[5] = "Power";
+    menu[6] = "Settings";
 
     // Initialize DisplayUtils
     displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
@@ -74,7 +87,7 @@ void MenuState::displayMenu() {
         else {
             gfx->setTextColor(COLOR_WHITE);
         }
-        gfx->setCursor(10, 30 + i * 30);
+        gfx->setCursor(10, i * 30);
         gfx->println(menu[i].c_str());
     }
 }
@@ -84,17 +97,26 @@ void MenuState::executeSelection() {
     Arduino_GFX* gfx = Device::getInstance().getDisplay();
 
     switch (menuIndex) {
-        case 0: 
+    case 0: // ESP-Connect
             app.changeState(StateFactory::createState(ENTER_REMOTE_CONTROL_STATE));
             break;
-        case 1: 
-            app.changeState(StateFactory::createState(SETUP_NFC_DEVICE_STATE));
+        case 1: // Remote Control
+            app.changeState(StateFactory::createState(IR_REMOTE_STATE));
             break;
-        case 2: // Clone NFC Chip
-            app.changeState(StateFactory::createState(CLONE_NFC_STATE));
+        case 2: // NFC Options
+            app.changeState(StateFactory::createState(NFC_OPTIONS_STATE));
             break;
-        case 3: // Play Snake Game
-            app.changeState(StateFactory::createState(SNAKE_GAME_STATE));
+        case 3: // IR Options
+            app.changeState(StateFactory::createState(IR_OPTIONS_STATE));
+            break;
+        case 4: // Applications
+            app.changeState(StateFactory::createState(APPLICATION_STATE));
+            break;
+        case 5: // Power
+            app.changeState(StateFactory::createState(POWER_OPTIONS_STATE));
+            break;
+        case 6: // Settings
+            app.changeState(StateFactory::createState(SETTINGS_STATE));
             break;
         default:
             break;

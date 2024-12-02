@@ -1,18 +1,15 @@
-// MenuState.h
-#ifndef MENUSTATE_H
-#define MENUSTATE_H
+#ifndef NFC_OPTIONS_STATE_H
+#define NFC_OPTIONS_STATE_H
 
 #include "State.h"
 #include "DisplayUtils.h"
-#include <vector>
-#include <string>
 
 namespace NuggetsInc {
 
-class MenuState : public AppState {
+class NFCOptionsState : public AppState {
 public:
-    MenuState();
-    ~MenuState();
+    NFCOptionsState();
+    ~NFCOptionsState() override;
 
     void onEnter() override;
     void onExit() override;
@@ -22,7 +19,7 @@ private:
     void displayMenu();
     void executeSelection();
 
-    static const int menuItems = 7;
+    static const int menuItems = 2; // Two options: Setup NFC Device and Clone NFC Chip
     String menu[menuItems];
     int menuIndex;
 
@@ -31,4 +28,4 @@ private:
 
 } // namespace NuggetsInc
 
-#endif // MENUSTATE_H
+#endif // NFC_OPTIONS_STATE_H
