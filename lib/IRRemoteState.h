@@ -19,6 +19,7 @@ namespace NuggetsInc
         BUTTON_LEFT,
         BUTTON_RIGHT,
         BUTTON_SELECT,
+        BUTTON_BACK,
         BUTTON_COUNT // Total number of buttons
     };
 

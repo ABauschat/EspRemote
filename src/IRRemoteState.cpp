@@ -68,6 +68,8 @@ namespace NuggetsInc
             return BUTTON_RIGHT;
         case EVENT_SELECT:
             return BUTTON_SELECT;
+        case EVENT_BACK:
+            return BUTTON_BACK;
         default:
             return BUTTON_COUNT;
         }
@@ -119,10 +121,6 @@ namespace NuggetsInc
 
                 displayUtils->addToTerminalDisplay("Stored IR signal for button.");
                 recordingButton = BUTTON_COUNT;
-            }
-            else
-            {
-                displayUtils->addToTerminalDisplay("Unsupported IR signal received.");
             }
 
             IrReceiver.resume();
