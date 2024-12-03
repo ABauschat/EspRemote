@@ -1,4 +1,3 @@
-// IRRemoteState.cpp
 #include "IRRemoteState.h"
 #include "DisplayUtils.h"
 #include <IRremote.hpp>
@@ -14,7 +13,6 @@ namespace NuggetsInc
     IRRemoteState::IRRemoteState()
         : displayUtils(nullptr), recordingButton(BUTTON_COUNT)
     {
-        // Initialize all IRData entries
         for (int i = 0; i < BUTTON_COUNT; i++)
         {
             buttonIRData[i].isValid = false;
@@ -33,12 +31,9 @@ namespace NuggetsInc
 
     void IRRemoteState::onEnter()
     {
-        // Initialize DisplayUtils
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
-
         displayUtils->newTerminalDisplay("Adafruit IR Transceiver");
 
-        // Initialize IR Receiver and Sender
         IrReceiver.begin(IR_RECEIVE_PIN);
         IrSender.begin(IR_SEND_PIN);
 
@@ -83,7 +78,6 @@ namespace NuggetsInc
         EventManager &eventManager = EventManager::getInstance();
         Event event;
 
-        // Check for events
         while (eventManager.getNextEvent(event))
         {
             ButtonType button = mapEventTypeToButtonType(event.type);
@@ -91,63 +85,48 @@ namespace NuggetsInc
             {
                 if (buttonIRData[button].isValid)
                 {
-                    // Send the stored data
                     displayUtils->addToTerminalDisplay("Sending stored IR data for button...");
-                    // Disable receiver before sending
                     IrReceiver.stop();
-
-                    // Send the raw data
                     IrSender.sendRaw(buttonIRData[button].rawData, buttonIRData[button].rawDataLength, 38);
-
-                    // Re-enable receiver after sending
                     IrReceiver.start();
-
                     displayUtils->addToTerminalDisplay("IR signal sent.");
                 }
                 else
                 {
-                    // Start recording for this button
                     recordingButton = button;
                     displayUtils->addToTerminalDisplay("Recording IR signal for button...");
                 }
             }
         }
 
-        // Decode IR signal
         if (IrReceiver.decode())
         {
             if (recordingButton != BUTTON_COUNT)
             {
-                // Store the IR data to the recordingButton
                 uint8_t len = IrReceiver.decodedIRData.rawDataPtr->rawlen;
 
-                // Ensure length does not exceed the maximum size
                 if (len - 1 > MAX_RAW_DATA_SIZE)
                 {
                     len = MAX_RAW_DATA_SIZE + 1;
                 }
 
-                // Convert raw data from ticks to microseconds and store
-                for (uint8_t i = 1; i < len; i++) // Start from 1 to skip initial gap
+                for (uint8_t i = 1; i < len; i++)
                 {
                     buttonIRData[recordingButton].rawData[i - 1] = IrReceiver.decodedIRData.rawDataPtr->rawbuf[i] * MICROS_PER_TICK;
                 }
                 buttonIRData[recordingButton].rawDataLength = len - 1;
                 buttonIRData[recordingButton].isValid = true;
 
-                // Display message
                 displayUtils->addToTerminalDisplay("Stored IR signal for button.");
-
-                // Reset recordingButton
                 recordingButton = BUTTON_COUNT;
             }
             else
             {
-                // Not recording, ignore or display received IR signal
-                displayUtils->addToTerminalDisplay("Received IR signal but not recording.");
+                displayUtils->addToTerminalDisplay("Unsupported IR signal received.");
             }
 
-            // Prepare for the next IR signal
+            IrReceiver.resume();
+        } else if (IrReceiver.isIdle()) {
             IrReceiver.resume();
         }
     }
