@@ -1,17 +1,25 @@
+// IRRemoteState.cpp
 #include "IRRemoteState.h"
 #include "DisplayUtils.h"
 #include <IRremote.hpp>
 #include "Device.h"
 #include "EventManager.h"
+#include <LittleFS.h> // Using LittleFS as per previous instructions
+#include <Arduino.h>
 
 #define IR_RECEIVE_PIN 14
 #define IR_SEND_PIN 15
+
+const uint32_t MAGIC_NUMBER = 0xDEADBEEF; // Magic number for data integrity
 
 namespace NuggetsInc
 {
 
     IRRemoteState::IRRemoteState()
-        : displayUtils(nullptr), recordingButton(BUTTON_COUNT)
+        : displayUtils(nullptr),
+          recordingButton(BUTTON_COUNT),
+          lastPressTime(0),
+          pressCount(0)
     {
         for (int i = 0; i < BUTTON_COUNT; i++)
         {
@@ -39,6 +47,9 @@ namespace NuggetsInc
 
         displayUtils->addToTerminalDisplay("IRin on pin " + String(IR_RECEIVE_PIN));
         displayUtils->addToTerminalDisplay("IRout on pin " + String(IR_SEND_PIN));
+
+        // Load IR data from flash
+        loadIRData();
     }
 
     void IRRemoteState::onExit()
@@ -48,6 +59,9 @@ namespace NuggetsInc
             delete displayUtils;
             displayUtils = nullptr;
         }
+
+        IrReceiver.stop();
+        // IrSender.end(); // Removed as IRsend does not have an end() method
     }
 
     ButtonType IRRemoteState::mapEventTypeToButtonType(EventType eventType)
@@ -85,18 +99,43 @@ namespace NuggetsInc
             ButtonType button = mapEventTypeToButtonType(event.type);
             if (button != BUTTON_COUNT)
             {
-                if (buttonIRData[button].isValid)
+                unsigned long currentTime = millis();
+
+                if (button == BUTTON_ACTION_TWO)
                 {
-                    displayUtils->addToTerminalDisplay("Sending stored IR data for button...");
-                    IrReceiver.stop();
-                    IrSender.sendRaw(buttonIRData[button].rawData, buttonIRData[button].rawDataLength, 38);
-                    IrReceiver.start();
-                    displayUtils->addToTerminalDisplay("IR signal sent.");
+                    if (currentTime - lastPressTime < doublePressThreshold)
+                    {
+                        pressCount++;
+                    }
+                    else
+                    {
+                        pressCount = 1;
+                    }
+
+                    lastPressTime = currentTime;
+
+                    if (pressCount == 2)
+                    {
+                        // Double press detected
+                        handleDoublePress(button);
+                        pressCount = 0; // Reset press count
+                    }
                 }
                 else
                 {
-                    recordingButton = button;
-                    displayUtils->addToTerminalDisplay("Recording IR signal for button...");
+                    if (buttonIRData[button].isValid)
+                    {
+                        displayUtils->addToTerminalDisplay("Sending stored IR data for button...");
+                        IrReceiver.stop();
+                        IrSender.sendRaw(buttonIRData[button].rawData, buttonIRData[button].rawDataLength, 38);
+                        IrReceiver.start();
+                        displayUtils->addToTerminalDisplay("IR signal sent.");
+                    }
+                    else
+                    {
+                        recordingButton = button;
+                        displayUtils->addToTerminalDisplay("Recording IR signal for button...");
+                    }
                 }
             }
         }
@@ -114,6 +153,7 @@ namespace NuggetsInc
 
                 for (uint8_t i = 1; i < len; i++)
                 {
+                    // Using the MICROS_PER_TICK defined in IRremote.hpp
                     buttonIRData[recordingButton].rawData[i - 1] = IrReceiver.decodedIRData.rawDataPtr->rawbuf[i] * MICROS_PER_TICK;
                 }
                 buttonIRData[recordingButton].rawDataLength = len - 1;
@@ -124,9 +164,100 @@ namespace NuggetsInc
             }
 
             IrReceiver.resume();
-        } else if (IrReceiver.isIdle()) {
+        }
+        else if (IrReceiver.isIdle())
+        {
             IrReceiver.resume();
         }
+    }
+
+    void IRRemoteState::handleDoublePress(ButtonType button)
+    {
+        displayUtils->addToTerminalDisplay("Double press detected. Saving IR data to flash...");
+
+        // Initialize LittleFS
+        if (!LittleFS.begin(true))
+        {
+            displayUtils->addToTerminalDisplay("Failed to mount LittleFS.");
+            return;
+        }
+
+        // Open the file for writing
+        File file = LittleFS.open("/irData.bin", FILE_WRITE);
+        if (!file)
+        {
+            displayUtils->addToTerminalDisplay("Failed to open file for writing.");
+            return;
+        }
+
+        // Write Magic Number
+        file.write(reinterpret_cast<const uint8_t*>(&MAGIC_NUMBER), sizeof(MAGIC_NUMBER));
+
+        // Write the buttonIRData array to the file
+        size_t bytesWritten = file.write(reinterpret_cast<const uint8_t*>(buttonIRData), sizeof(buttonIRData));
+        if (bytesWritten != sizeof(buttonIRData))
+        {
+            displayUtils->addToTerminalDisplay("Failed to write all IR data to flash.");
+        }
+        else
+        {
+            displayUtils->addToTerminalDisplay("IR data successfully saved to flash.");
+        }
+
+        file.close();
+    }
+
+    bool IRRemoteState::loadIRData()
+    {
+        displayUtils->addToTerminalDisplay("Loading IR data from flash...");
+
+        // Initialize LittleFS
+        if (!LittleFS.begin(false))
+        {
+            displayUtils->addToTerminalDisplay("Failed to mount LittleFS.");
+            return false;
+        }
+
+        File file = LittleFS.open("/irData.bin", FILE_READ);
+        if (!file)
+        {
+            displayUtils->addToTerminalDisplay("No IR data file found.");
+            return false;
+        }
+
+        // Read Magic Number
+        uint32_t fileMagic = 0;
+        if (file.read(reinterpret_cast<uint8_t*>(&fileMagic), sizeof(fileMagic)) != sizeof(fileMagic))
+        {
+            displayUtils->addToTerminalDisplay("Failed to read Magic Number.");
+            file.close();
+            return false;
+        }
+
+        if (fileMagic != MAGIC_NUMBER)
+        {
+            displayUtils->addToTerminalDisplay("Invalid Magic Number. Data may be corrupted.");
+            file.close();
+            return false;
+        }
+
+        size_t bytesRead = file.read(reinterpret_cast<uint8_t*>(buttonIRData), sizeof(buttonIRData));
+        if (bytesRead != sizeof(buttonIRData))
+        {
+            displayUtils->addToTerminalDisplay("Failed to read all IR data from flash.");
+            file.close();
+            return false;
+        }
+
+        // Mark all buttons as valid
+        for (int i = 0; i < BUTTON_COUNT; i++)
+        {
+            buttonIRData[i].isValid = true;
+        }
+
+        displayUtils->addToTerminalDisplay("IR data successfully loaded from flash.");
+        file.close();
+        return true;
     }
 
 } // namespace NuggetsInc

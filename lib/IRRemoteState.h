@@ -4,6 +4,7 @@
 
 #include "State.h"
 #include "DisplayUtils.h"
+#include <Arduino.h> // For unsigned long and other Arduino-specific types
 
 namespace NuggetsInc
 {
@@ -44,7 +45,31 @@ namespace NuggetsInc
         DisplayUtils *displayUtils;
         IRData buttonIRData[BUTTON_COUNT]; // Array to store IR data for each button
         ButtonType recordingButton;        // Current button being recorded
+
+        // Mapping function from EventType to ButtonType
         ButtonType mapEventTypeToButtonType(EventType eventType);
+
+        // === Double Press Detection Variables ===
+        unsigned long lastPressTime;                // Timestamp of the last button press
+        static const unsigned long doublePressThreshold = 500; // Time threshold for double press in milliseconds
+        uint8_t pressCount;                         // Counter for button presses
+
+        // === Methods for Handling Double Press and Flash Operations ===
+
+        /**
+         * @brief Handles the action when a double press is detected on a specific button.
+         * 
+         * @param button The ButtonType that was double-pressed.
+         */
+        void handleDoublePress(ButtonType button);
+
+        /**
+         * @brief Loads IR data from flash memory into the buttonIRData array.
+         * 
+         * @return true if data was successfully loaded.
+         * @return false if loading failed.
+         */
+        bool loadIRData();
     };
 
 } // namespace NuggetsInc
