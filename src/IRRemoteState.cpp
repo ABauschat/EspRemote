@@ -4,13 +4,13 @@
 #include <IRremote.hpp>
 #include "Device.h"
 #include "EventManager.h"
-#include <LittleFS.h> // Using LittleFS as per previous instructions
+#include <LittleFS.h> 
 #include <Arduino.h>
 
 #define IR_RECEIVE_PIN 14
 #define IR_SEND_PIN 15
 
-const uint32_t MAGIC_NUMBER = 0xDEADBEEF; // Magic number for data integrity
+const uint32_t MAGIC_NUMBER = 0xDEADBEEF;
 
 namespace NuggetsInc
 {
@@ -61,7 +61,6 @@ namespace NuggetsInc
         }
 
         IrReceiver.stop();
-        // IrSender.end(); // Removed as IRsend does not have an end() method
     }
 
     ButtonType IRRemoteState::mapEventTypeToButtonType(EventType eventType)
@@ -118,7 +117,7 @@ namespace NuggetsInc
                     {
                         // Double press detected
                         handleDoublePress(button);
-                        pressCount = 0; // Reset press count
+                        pressCount = 0;
                     }
                 }
                 else

@@ -12,11 +12,12 @@
 #include "NFCOptionsState.h"
 #include "PowerOptionsState.h"
 #include "SettingsState.h"
+#include "SetupNewRemoteState.h"
+#include "RemoteBrowserState.h"
 
 namespace NuggetsInc {
 
 AppState* StateFactory::createState(StateType type) {
-    // Always return a ClearState that transitions to the desired state
     return new ClearState(type);
 }
 
@@ -46,6 +47,10 @@ AppState* StateFactory::createActualState(StateType type) {
             return new PowerOptionsState();
         case SETTINGS_STATE:
             return new SettingsState();
+        case SETUP_NEW_REMOTE_STATE:
+            return new SetupNewRemoteState();
+        case REMOTE_BROWSER_STATE:
+            return new RemoteBrowserState();
         default:
             return nullptr;
     }
