@@ -3,6 +3,7 @@
 #define IR_COMMON_H
 
 #include <Arduino.h>
+#include "EventManager.h"
 
 namespace NuggetsInc
 {
@@ -30,6 +31,19 @@ struct IRData
     uint8_t rawDataLength;
     bool isValid;
 };
+
+
+void BeginIrSender();
+String LoadIRData(IRData buttonIRData[]);
+String SendIRData(IRData buttonIRData[], ButtonType button);
+ButtonType mapEventTypeToButtonType(EventType eventType);
+
+void BeginIrReceiver();
+void StopIrReceiver();
+void RecieverResume();
+bool RecieverIsIdle();
+bool RecieverDecode();
+IRData DecodeIRData();
 
 
     
