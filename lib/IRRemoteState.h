@@ -1,4 +1,5 @@
 // IRRemoteState.h
+
 #ifndef IR_REMOTE_STATE_H
 #define IR_REMOTE_STATE_H
 
@@ -21,7 +22,12 @@ namespace NuggetsInc
 
     private:
         DisplayUtils *displayUtils;
-        IRData buttonIRData[BUTTON_COUNT]; 
+        RemoteData remotes[NuggetsInc::MAX_REMOTE_SLOTS];
+        uint8_t selectedSlot;
+        bool slotSelected;
+
+        void promptSlotSelection();
+        void handleSlotSelection(ButtonType button);
     };
 
 } // namespace NuggetsInc

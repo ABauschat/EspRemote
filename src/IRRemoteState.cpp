@@ -1,14 +1,18 @@
 // IRRemoteState.cpp
+
 #include "IRRemoteState.h"
-#include "DisplayUtils.h"
 #include "Device.h"
-#include <Arduino.h>
+#include "IRCommon.h"
 
 namespace NuggetsInc
 {
     IRRemoteState::IRRemoteState()
-        : displayUtils(nullptr)
-    {}
+        : displayUtils(nullptr),
+          selectedSlot(0),
+          slotSelected(false)
+    {
+        LoadIRData(remotes);
+    }
 
     IRRemoteState::~IRRemoteState()
     {
@@ -22,12 +26,13 @@ namespace NuggetsInc
     void IRRemoteState::onEnter()
     {
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
-        displayUtils->newTerminalDisplay("Adafruit IR Transceiver");
+        displayUtils->clearDisplay();
+        displayUtils->setTextSize(2);
+        displayUtils->setTextColor(COLOR_WHITE);
+
+        promptSlotSelection();
 
         BeginIrSender();
-
-        String result = LoadIRData(buttonIRData);
-        displayUtils->addToTerminalDisplay(result);
     }
 
     void IRRemoteState::onExit()
@@ -49,21 +54,92 @@ namespace NuggetsInc
             ButtonType button = mapEventTypeToButtonType(event.type);
             if (button != BUTTON_COUNT)
             {
-                unsigned long currentTime = millis();
-
-                if (buttonIRData[button].isValid)
+                if (!slotSelected)
                 {
-                    displayUtils->addToTerminalDisplay("Sending stored IR data for button...");
-
-                    String result = SendIRData(buttonIRData, button);
-
-                    displayUtils->addToTerminalDisplay(result);
+                    handleSlotSelection(button);
                 }
                 else
                 {
-                    displayUtils->addToTerminalDisplay("No IR data stored for button.");
+                    if (button >= BUTTON_COUNT)
+                    {
+                        //empty
+                    }
+                    else
+                    {
+                        if (remotes[selectedSlot].buttonIRData[button].isValid)
+                        {
+                            String result = SendIRData(remotes, button, selectedSlot);
+                            displayUtils->addToTerminalDisplay(result);
+                        }
+                        else
+                        {
+                            displayUtils->addToTerminalDisplay("No IR data stored for button.");
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    void IRRemoteState::promptSlotSelection()
+    {
+        Arduino_GFX *gfx = Device::getInstance().getDisplay();
+        gfx->fillScreen(COLOR_BLACK);
+
+        gfx->setTextSize(2);
+        gfx->setTextColor(COLOR_WHITE);
+        gfx->setCursor(10, 10);
+        gfx->println("Select Remote Slot:");
+
+        for (uint8_t slot = 0; slot < MAX_REMOTE_SLOTS; slot++)
+        {
+            int yPosition = 40 + (slot * 20);
+            if (slot == selectedSlot)
+            {
+                gfx->fillRect(5, yPosition - 5, 300, 20, COLOR_ORANGE);
+            }
+
+            String status = "Slot " + String(slot) + ": ";
+            status += remotes[slot].buttonIRData[BUTTON_ACTION_ONE].isValid ? "Used" : "Empty";
+
+            gfx->setCursor(10, yPosition);
+            gfx->println(status);
+        }
+    }
+
+    void IRRemoteState::handleSlotSelection(ButtonType button)
+    {
+        bool selectionChanged = false;
+
+        switch (button)
+        {
+        case BUTTON_DOWN:
+            if (selectedSlot < MAX_REMOTE_SLOTS - 1)
+            {
+                selectedSlot++;
+                selectionChanged = true;
+            }
+            break;
+        case BUTTON_UP:
+            if (selectedSlot > 0)
+            {
+                selectedSlot--;
+                selectionChanged = true;
+            }
+            break;
+        case BUTTON_ACTION_ONE:
+            slotSelected = true;
+
+            displayUtils->clearDisplay();
+            displayUtils->displayMessage("Slot " + String(selectedSlot) + " selected.");
+            break;
+        default:
+            break;
+        }
+
+        if (selectionChanged)
+        {
+            promptSlotSelection();
         }
     }
 

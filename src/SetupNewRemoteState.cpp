@@ -1,18 +1,21 @@
 // SetupNewRemoteState.cpp
+
 #include "SetupNewRemoteState.h"
-#include "DisplayUtils.h"
 #include "Device.h"
 #include <LittleFS.h>
-#include <Arduino.h>
+#include "IRCommon.h"
 
 namespace NuggetsInc
 {
     SetupNewRemoteState::SetupNewRemoteState()
         : displayUtils(nullptr),
+          selectedSlot(0),
+          slotSelected(false),
           recordingButton(BUTTON_COUNT),
           lastPressTime(0),
           pressCount(0)
     {
+        LoadIRData(remotes);
     }
 
     SetupNewRemoteState::~SetupNewRemoteState()
@@ -27,9 +30,11 @@ namespace NuggetsInc
     void SetupNewRemoteState::onEnter()
     {
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
-        displayUtils->newTerminalDisplay("Adafruit IR Transceiver");
+        displayUtils->clearDisplay();
+        displayUtils->setTextSize(2);
+        displayUtils->setTextColor(COLOR_WHITE);
 
-        BeginIrReceiver();
+        promptSlotSelection();
     }
 
     void SetupNewRemoteState::onExit()
@@ -53,36 +58,40 @@ namespace NuggetsInc
             ButtonType button = mapEventTypeToButtonType(event.type);
             if (button != BUTTON_COUNT)
             {
-                unsigned long currentTime = millis();
-
-                if (button == BUTTON_ACTION_TWO)
+                if (!slotSelected)
                 {
-                    if (currentTime - lastPressTime < doublePressThreshold)
-                    {
-                        pressCount++;
-                    }
-                    else
-                    {
-                        pressCount = 1;
-                    }
-
-                    lastPressTime = currentTime;
-
-                    if (pressCount == 2)
-                    {
-                        handleDoublePress(button);
-                        pressCount = 0;
-                    }
+                    handleSlotSelection(button);
                 }
                 else
                 {
-                    if (buttonIRData[button].isValid)
+                    unsigned long currentTime = millis();
+
+                    if (button == BUTTON_ACTION_TWO)
                     {
+                        if (currentTime - lastPressTime < doublePressThreshold)
+                        {
+                            pressCount++;
+                        }
+                        else
+                        {
+                            pressCount = 1;
+                        }
+
+                        lastPressTime = currentTime;
+
+                        if (pressCount == 2)
+                        {
+                            handleDoublePress(button);
+                            pressCount = 0;
+                        }
                     }
                     else
                     {
-                        recordingButton = button;
-                        displayUtils->addToTerminalDisplay("Recording IR signal for button...");
+                        
+                            recordingButton = button;
+                            displayUtils->addToTerminalDisplay("Recording IR signal for button...");
+                            BeginIrReceiver();
+                        
                     }
                 }
             }
@@ -92,7 +101,7 @@ namespace NuggetsInc
         {
             if (recordingButton != BUTTON_COUNT)
             {
-                buttonIRData[recordingButton] = DecodeIRData();
+                remotes[selectedSlot].buttonIRData[recordingButton] = DecodeIRData();
 
                 displayUtils->addToTerminalDisplay("Stored IR signal for button.");
                 recordingButton = BUTTON_COUNT;
@@ -108,38 +117,100 @@ namespace NuggetsInc
 
     void SetupNewRemoteState::handleDoublePress(ButtonType button)
     {
-        displayUtils->addToTerminalDisplay("Double press detected. Saving IR data to flash...");
-
-        // Initialize LittleFS
-        if (!LittleFS.begin(true))
+        if (button == BUTTON_ACTION_TWO)
         {
-            displayUtils->addToTerminalDisplay("Failed to mount LittleFS.");
-            return;
-        }
+            displayUtils->addToTerminalDisplay("Double press detected. Saving IR data to flash...");
 
-        // Open the file for writing
-        File file = LittleFS.open("/irData.bin", FILE_WRITE);
-        if (!file)
-        {
-            displayUtils->addToTerminalDisplay("Failed to open file for writing.");
-            return;
-        }
+            if (!LittleFS.begin(true))
+            {
+                displayUtils->addToTerminalDisplay("Failed to mount LittleFS.");
+                return;
+            }
 
-        // Write Magic Number
-        file.write(reinterpret_cast<const uint8_t *>(&MAGIC_NUMBER), sizeof(MAGIC_NUMBER));
+            String filename = "/irData" + String(selectedSlot) + ".bin";
+            File file = LittleFS.open(filename, FILE_WRITE);
+            if (!file)
+            {
+                displayUtils->addToTerminalDisplay("Failed to open file for writing.");
+                return;
+            }
 
-        // Write the buttonIRData array to the file
-        size_t bytesWritten = file.write(reinterpret_cast<const uint8_t *>(buttonIRData), sizeof(buttonIRData));
-        if (bytesWritten != sizeof(buttonIRData))
-        {
-            displayUtils->addToTerminalDisplay("Failed to write all IR data to flash.");
-        }
-        else
-        {
-            displayUtils->addToTerminalDisplay("IR data successfully saved to flash.");
-        }
+            file.write(reinterpret_cast<const uint8_t *>(&MAGIC_NUMBER), sizeof(MAGIC_NUMBER));
 
-        file.close();
+            size_t bytesWritten = file.write(reinterpret_cast<const uint8_t *>(remotes[selectedSlot].buttonIRData), sizeof(remotes[selectedSlot].buttonIRData));
+            if (bytesWritten != sizeof(remotes[selectedSlot].buttonIRData))
+            {
+                displayUtils->addToTerminalDisplay("Failed to write all IR data to flash.");
+            }
+            else
+            {
+                displayUtils->addToTerminalDisplay("IR data successfully saved to flash.");
+            }
+
+            file.close();
+        }
     }
 
-} // namespace NuggetsInc 
+    void SetupNewRemoteState::promptSlotSelection()
+    {
+        Arduino_GFX *gfx = Device::getInstance().getDisplay();
+        gfx->fillScreen(COLOR_BLACK);
+
+        gfx->setTextSize(2);
+        gfx->setTextColor(COLOR_WHITE);
+        gfx->setCursor(10, 10);
+        gfx->println("Select Remote Slot:");
+
+        for (uint8_t slot = 0; slot < MAX_REMOTE_SLOTS; slot++)
+        {
+            int yPosition = 40 + (slot * 20);
+            if (slot == selectedSlot)
+            {
+                gfx->fillRect(5, yPosition - 5, 300, 20, COLOR_ORANGE);
+            }
+
+            String status = "Slot " + String(slot) + ": ";
+            status += remotes[slot].buttonIRData[BUTTON_ACTION_ONE].isValid ? "Used" : "Empty";
+
+            gfx->setCursor(10, yPosition);
+            gfx->println(status);
+        }
+    }
+
+    void SetupNewRemoteState::handleSlotSelection(ButtonType button)
+    {
+        bool selectionChanged = false;
+
+        switch (button)
+        {
+        case BUTTON_DOWN:
+            if (selectedSlot < MAX_REMOTE_SLOTS - 1)
+            {
+                selectedSlot++;
+                selectionChanged = true;
+            }
+            break;
+        case BUTTON_UP:
+            if (selectedSlot > 0)
+            {
+                selectedSlot--;
+                selectionChanged = true;
+            }
+            break;
+        case BUTTON_ACTION_ONE:
+            slotSelected = true;
+
+            displayUtils->clearDisplay();
+            displayUtils->displayMessage("Slot " + String(selectedSlot) + " selected.");
+            break;
+        default:
+            break;
+        }
+
+        if (selectionChanged)
+        {
+            promptSlotSelection();
+        }
+    }
+
+} // namespace NuggetsInc

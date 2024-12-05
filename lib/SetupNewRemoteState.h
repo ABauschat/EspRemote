@@ -1,4 +1,5 @@
 // SetupNewRemoteState.h
+
 #ifndef SETUP_NEW_REMOTE_STATE_H
 #define SETUP_NEW_REMOTE_STATE_H
 
@@ -21,6 +22,9 @@ namespace NuggetsInc
 
     private:
         DisplayUtils* displayUtils;
+        RemoteData remotes[NuggetsInc::MAX_REMOTE_SLOTS];
+        uint8_t selectedSlot;
+        bool slotSelected;
         IRData buttonIRData[BUTTON_COUNT];
         ButtonType recordingButton;       
         unsigned long lastPressTime;               
@@ -28,7 +32,9 @@ namespace NuggetsInc
         uint8_t pressCount;                        
 
         void handleDoublePress(ButtonType button);
+        void promptSlotSelection();
+        void handleSlotSelection(ButtonType button);
     };
 }
 
-#endif // SETUP_NEW_REMOTE_STATE_H 
+#endif // SETUP_NEW_REMOTE_STATE_H

@@ -1,4 +1,5 @@
-//IRCommon.h
+// IRCommon.h
+
 #ifndef IR_COMMON_H
 #define IR_COMMON_H
 
@@ -8,45 +9,47 @@
 namespace NuggetsInc
 {
 
-const uint8_t MAX_RAW_DATA_SIZE = 100; 
-const uint32_t MAGIC_NUMBER = 0xDEADBEEF;
+    const uint8_t MAX_RAW_DATA_SIZE = 100;
+    const uint32_t MAGIC_NUMBER = 0xDEADBEEF;
+    const uint8_t MAX_REMOTE_SLOTS = 10;
 
-// Enum to represent buttons
-enum ButtonType
-{
-    BUTTON_ACTION_ONE,
-    BUTTON_ACTION_TWO,
-    BUTTON_UP,
-    BUTTON_DOWN,
-    BUTTON_LEFT,
-    BUTTON_RIGHT,
-    BUTTON_SELECT,
-    BUTTON_BACK,
-    BUTTON_COUNT // Total number
-};
+    enum ButtonType
+    {
+        BUTTON_ACTION_ONE,
+        BUTTON_ACTION_TWO,
+        BUTTON_UP,
+        BUTTON_DOWN,
+        BUTTON_LEFT,
+        BUTTON_RIGHT,
+        BUTTON_SELECT,
+        BUTTON_BACK,
+        BUTTON_COUNT
+    };
 
-struct IRData
-{
-    uint16_t rawData[MAX_RAW_DATA_SIZE];
-    uint8_t rawDataLength;
-    bool isValid;
-};
+    struct IRData
+    {
+        uint16_t rawData[MAX_RAW_DATA_SIZE];
+        uint8_t rawDataLength;
+        bool isValid;
+    };
 
+    struct RemoteData
+    {
+        IRData buttonIRData[BUTTON_COUNT];
+    };
 
-void BeginIrSender();
-String LoadIRData(IRData buttonIRData[]);
-String SendIRData(IRData buttonIRData[], ButtonType button);
-ButtonType mapEventTypeToButtonType(EventType eventType);
+    void BeginIrSender();
+    String LoadIRData(RemoteData remotes[]);
+    String SendIRData(RemoteData remotes[], ButtonType button, uint8_t slot);
+    ButtonType mapEventTypeToButtonType(EventType eventType);
 
-void BeginIrReceiver();
-void StopIrReceiver();
-void RecieverResume();
-bool RecieverIsIdle();
-bool RecieverDecode();
-IRData DecodeIRData();
+    void BeginIrReceiver();
+    void StopIrReceiver();
+    void RecieverResume();
+    bool RecieverIsIdle();
+    bool RecieverDecode();
+    IRData DecodeIRData();
 
-
-    
 } // namespace NuggetsInc
 
 #endif // IR_COMMON_H
