@@ -1,7 +1,9 @@
 // IRRemoteState.cpp
 
 #include "IRRemoteState.h"
+#include "DisplayUtils.h"
 #include "Device.h"
+#include <Arduino.h>
 #include "IRCommon.h"
 
 namespace NuggetsInc
@@ -28,11 +30,9 @@ namespace NuggetsInc
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
         displayUtils->clearDisplay();
         displayUtils->setTextSize(2);
-        displayUtils->setTextColor(COLOR_WHITE);
+        displayUtils->setTextColor(WHITE);
 
         promptSlotSelection();
-
-        BeginIrSender();
     }
 
     void IRRemoteState::onExit()
@@ -52,6 +52,7 @@ namespace NuggetsInc
         while (eventManager.getNextEvent(event))
         {
             ButtonType button = mapEventTypeToButtonType(event.type);
+
             if (button != BUTTON_COUNT)
             {
                 if (!slotSelected)
@@ -62,7 +63,7 @@ namespace NuggetsInc
                 {
                     if (button >= BUTTON_COUNT)
                     {
-                        //empty
+                        continue;
                     }
                     else
                     {
@@ -84,10 +85,10 @@ namespace NuggetsInc
     void IRRemoteState::promptSlotSelection()
     {
         Arduino_GFX *gfx = Device::getInstance().getDisplay();
-        gfx->fillScreen(COLOR_BLACK);
+        gfx->fillScreen(BLACK);
 
         gfx->setTextSize(2);
-        gfx->setTextColor(COLOR_WHITE);
+        gfx->setTextColor(WHITE);
         gfx->setCursor(10, 10);
         gfx->println("Select Remote Slot:");
 
@@ -109,6 +110,7 @@ namespace NuggetsInc
 
     void IRRemoteState::handleSlotSelection(ButtonType button)
     {
+        Arduino_GFX *gfx = Device::getInstance().getDisplay();
         bool selectionChanged = false;
 
         switch (button)
@@ -129,7 +131,7 @@ namespace NuggetsInc
             break;
         case BUTTON_ACTION_ONE:
             slotSelected = true;
-
+            BeginIrSender();
             displayUtils->clearDisplay();
             displayUtils->displayMessage("Slot " + String(selectedSlot) + " selected.");
             break;
