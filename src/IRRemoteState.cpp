@@ -10,11 +10,8 @@
 #define IR_RECEIVE_PIN 14
 #define IR_SEND_PIN 15
 
-const uint32_t MAGIC_NUMBER = 0xDEADBEEF;
-
 namespace NuggetsInc
 {
-
     IRRemoteState::IRRemoteState()
         : displayUtils(nullptr),
           recordingButton(BUTTON_COUNT),
@@ -35,6 +32,8 @@ namespace NuggetsInc
             delete displayUtils;
             displayUtils = nullptr;
         }
+
+        IrReceiver.stop();
     }
 
     void IRRemoteState::onEnter()
@@ -48,7 +47,6 @@ namespace NuggetsInc
         displayUtils->addToTerminalDisplay("IRin on pin " + String(IR_RECEIVE_PIN));
         displayUtils->addToTerminalDisplay("IRout on pin " + String(IR_SEND_PIN));
 
-        // Load IR data from flash
         loadIRData();
     }
 
@@ -115,7 +113,6 @@ namespace NuggetsInc
 
                     if (pressCount == 2)
                     {
-                        // Double press detected
                         handleDoublePress(button);
                         pressCount = 0;
                     }
