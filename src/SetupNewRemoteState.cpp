@@ -75,6 +75,8 @@ namespace NuggetsInc
                         else
                         {
                             pressCount = 1;
+                             recordingButton = button;
+                            displayUtils->addToTerminalDisplay("Recording IR signal for button...");
                         }
 
                         lastPressTime = currentTime;
@@ -177,7 +179,7 @@ namespace NuggetsInc
         }
     }
 
-    void SetupNewRemoteState::handleSlotSelection(ButtonType button)
+    void SetupNewRemoteState::handleSlotSelection(ButtonType button) 
     {
         bool selectionChanged = false;
 

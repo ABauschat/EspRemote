@@ -12,8 +12,7 @@ IROptionsState::IROptionsState()
       displayUtils(nullptr) {
     
     // Define menu options
-    menu[0] = "Remote Browser";
-    menu[1] = "Setup New Remote";
+    menu[0] = "Setup New Remote";
 
     // Initialize DisplayUtils
     displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
@@ -82,13 +81,7 @@ void IROptionsState::executeSelection() {
 
     switch (menuIndex) {
         case 0: // Remote Browser
-            app.changeState(StateFactory::createState(REMOTE_BROWSER_STATE));
-            break;
-        case 1: // Setup New Remote
             app.changeState(StateFactory::createState(SETUP_NEW_REMOTE_STATE));
-            break;
-        default:
-            // Handle unexpected cases gracefully
             break;
     }
 }
