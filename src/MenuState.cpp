@@ -28,7 +28,7 @@ MenuState::MenuState()
     menu[3] = "IR Options";
     menu[4] = "Applications";
     menu[5] = "Power";
-    menu[6] = "Settings";
+    //menu[6] = "Settings";
 
     // Initialize DisplayUtils
     displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
@@ -115,9 +115,9 @@ void MenuState::executeSelection() {
         case 5: // Power
             app.changeState(StateFactory::createState(POWER_OPTIONS_STATE));
             break;
-        case 6: // Settings
-            app.changeState(StateFactory::createState(SETTINGS_STATE));
-            break;
+        //case 6: // Settings
+            //app.changeState(StateFactory::createState(SETTINGS_STATE));
+           // break;
         default:
             break;
     }

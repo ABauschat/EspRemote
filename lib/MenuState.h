@@ -22,7 +22,7 @@ private:
     void displayMenu();
     void executeSelection();
 
-    static const int menuItems = 7;
+    static const int menuItems = 6;
     String menu[menuItems];
     int menuIndex;
 

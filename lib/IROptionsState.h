@@ -19,7 +19,7 @@ private:
     void displayMenu();
     void executeSelection();
 
-    static const int menuItems = 2; // Two options: Remote Browser and Setup New Remote
+    static const int menuItems = 1; // Two options: Remote Browser and Setup New Remote
     String menu[menuItems];
     int menuIndex;
 
