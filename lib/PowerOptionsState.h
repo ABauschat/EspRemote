@@ -3,6 +3,8 @@
 
 #include "State.h"
 
+#define PIN_BAT_VOLT 4
+
 namespace NuggetsInc
 {
 
@@ -15,6 +17,10 @@ namespace NuggetsInc
         void onEnter() override;
         void onExit() override;
         void update() override;
+
+    private:
+        float calculateBatteryPercentage(float voltage); // Declare the function here
+        unsigned long lastUpdateTime;
     };
 
 } // namespace NuggetsInc
