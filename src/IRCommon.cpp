@@ -3,12 +3,84 @@
 #include "IRCommon.h"
 #include <LittleFS.h>
 #include <IRremote.hpp>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/queue.h>
 
 #define IR_RECEIVE_PIN 14
 #define IR_SEND_PIN 15
 
 namespace NuggetsInc
 {
+    static QueueHandle_t sendQueue = NULL;
+    static RemoteData* remoteDataRef = nullptr;
+
+    void IRSendTask(void *pvParameters)
+    {
+        Serial.println("IRSendTask started.");
+        
+        BeginIrSender();
+
+        while (true)
+        {
+            SendRequest request;
+            if (xQueueReceive(sendQueue, &request, portMAX_DELAY) == pdPASS)
+            {
+                Serial.println("IRSendTask received a send request.");
+                String result = SendIRData(remoteDataRef, request.button, request.slot);
+                Serial.println(result); 
+            }
+        }
+    }
+
+    void InitializeSendTask(RemoteData remotes[])
+    {
+        remoteDataRef = remotes;
+        sendQueue = xQueueCreate(10, sizeof(SendRequest));
+        if (sendQueue == NULL)
+        {
+            Serial.println("Failed to create send queue.");
+            return;
+        }
+
+        BaseType_t result = xTaskCreatePinnedToCore(
+            IRSendTask,          // Task function
+            "IRSendTask",        // Task name
+            4096,                // Stack size (adjust as needed)
+            NULL,                // Parameters
+            1,                   // Priority
+            NULL,                // Task handle
+            0                   // Core ID (1 for Core 1)
+        );
+
+        if (result == pdPASS)
+        {
+            Serial.println("IRSendTask initialized on Core 1.");
+        }
+        else
+        {
+            Serial.println("Failed to create IRSendTask.");
+        }
+    }
+
+    bool EnqueueSendRequest(ButtonType button, uint8_t slot)
+    {
+        if (sendQueue == NULL)
+        {
+            Serial.println("Send queue not initialized.");
+            return false;
+        }
+
+        SendRequest request = { button, slot };
+        if (xQueueSend(sendQueue, &request, 0) != pdTRUE)
+        {
+            Serial.println("Failed to enqueue send request.");
+            return false;
+        }
+
+        Serial.println("Send request enqueued.");
+        return true;
+    }
 
     ButtonType mapEventTypeToButtonType(EventType eventType)
     {
@@ -38,6 +110,7 @@ namespace NuggetsInc
     void BeginIrSender()
     {
         IrSender.begin(IR_SEND_PIN);
+        Serial.println("IR Sender initialized.");
     }
 
     String LoadIRData(RemoteData remotes[])
@@ -46,9 +119,12 @@ namespace NuggetsInc
 
         if (!LittleFS.begin(false))
         {
-            result += "Failed to mount LittleFS.";
+            result += "Failed to mount LittleFS.\n";
+            Serial.println(result);
             return result;
         }
+
+        Serial.println("LittleFS mounted successfully.");
 
         for (uint8_t slot = 0; slot < MAX_REMOTE_SLOTS; slot++)
         {
@@ -58,6 +134,7 @@ namespace NuggetsInc
             if (!file)
             {
                 result += "No IR data file found for slot " + String(slot) + ".\n";
+                Serial.println(result);
                 continue;
             }
 
@@ -66,6 +143,7 @@ namespace NuggetsInc
             if (file.read(reinterpret_cast<uint8_t *>(&magicNumber), sizeof(magicNumber)) != sizeof(magicNumber))
             {
                 result += "Failed to read Magic Number for slot " + String(slot) + ".\n";
+                Serial.println(result);
                 file.close();
                 continue;
             }
@@ -73,6 +151,7 @@ namespace NuggetsInc
             if (magicNumber != MAGIC_NUMBER)
             {
                 result += "Invalid Magic Number for slot " + String(slot) + ". Data may be corrupted.\n";
+                Serial.println(result);
                 file.close();
                 continue;
             }
@@ -82,6 +161,7 @@ namespace NuggetsInc
             if (bytesRead != sizeof(remotes[slot].buttonIRData))
             {
                 result += "Failed to read all IR data for slot " + String(slot) + ".\n";
+                Serial.println(result);
                 file.close();
                 continue;
             }
@@ -92,6 +172,7 @@ namespace NuggetsInc
             }
 
             result += "IR data successfully loaded for slot " + String(slot) + ".\n";
+            Serial.println(result);
             file.close();
         }
 
@@ -111,6 +192,7 @@ namespace NuggetsInc
         }
 
         IrSender.sendRaw(remotes[slot].buttonIRData[button].rawData, remotes[slot].buttonIRData[button].rawDataLength, 38);
+        Serial.println("IR signal sent."); 
 
         return "IR data sent from slot " + String(slot) + ".";
     }
@@ -118,16 +200,19 @@ namespace NuggetsInc
     void BeginIrReceiver()
     {
         IrReceiver.begin(IR_RECEIVE_PIN);
+        Serial.println("IR Receiver initialized.");
     }
 
     void StopIrReceiver()
     {
         IrReceiver.stop();
+        Serial.println("IR Receiver stopped.");
     }
 
     void RecieverResume()
     {
         IrReceiver.resume();
+        Serial.println("IR Receiver resumed.");
     }
 
     bool RecieverIsIdle()

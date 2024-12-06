@@ -38,6 +38,12 @@ namespace NuggetsInc
         IRData buttonIRData[BUTTON_COUNT];
     };
 
+    // Structure to hold send requests
+    struct SendRequest {
+        ButtonType button;
+        uint8_t slot;
+    };
+
     void BeginIrSender();
     String LoadIRData(RemoteData remotes[]);
     String SendIRData(RemoteData remotes[], ButtonType button, uint8_t slot);
@@ -49,6 +55,10 @@ namespace NuggetsInc
     bool RecieverIsIdle();
     bool RecieverDecode();
     IRData DecodeIRData();
+
+    // Task-related functions
+    void InitializeSendTask(RemoteData remotes[]);
+    bool EnqueueSendRequest(ButtonType button, uint8_t slot);
 
 } // namespace NuggetsInc
 

@@ -13,7 +13,8 @@ namespace NuggetsInc
           selectedSlot(0),
           slotSelected(false)
     {
-        LoadIRData(remotes);
+        String loadResult = LoadIRData(remotes);
+        Serial.println(loadResult);
     }
 
     IRRemoteState::~IRRemoteState()
@@ -27,16 +28,20 @@ namespace NuggetsInc
 
     void IRRemoteState::onEnter()
     {
+        Serial.println("Entering IRRemoteState.");
+        
         displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
         displayUtils->clearDisplay();
         displayUtils->setTextSize(2);
         displayUtils->setTextColor(WHITE);
-
+        InitializeSendTask(remotes);
         promptSlotSelection();
     }
 
     void IRRemoteState::onExit()
     {
+        Serial.println("Exiting IRRemoteState.");
+        
         if (displayUtils)
         {
             delete displayUtils;
@@ -69,8 +74,14 @@ namespace NuggetsInc
                     {
                         if (remotes[selectedSlot].buttonIRData[button].isValid)
                         {
-                            String result = SendIRData(remotes, button, selectedSlot);
-                            displayUtils->addToTerminalDisplay(result);
+                            if (NuggetsInc::EnqueueSendRequest(button, selectedSlot))
+                            {
+                                displayUtils->addToTerminalDisplay("IR send request enqueued.");
+                            }
+                            else
+                            {
+                                displayUtils->addToTerminalDisplay("Failed to enqueue IR send request.");
+                            }
                         }
                         else
                         {
@@ -120,6 +131,7 @@ namespace NuggetsInc
             {
                 selectedSlot++;
                 selectionChanged = true;
+                Serial.println("Selected slot incremented.");
             }
             break;
         case BUTTON_UP:
@@ -127,13 +139,14 @@ namespace NuggetsInc
             {
                 selectedSlot--;
                 selectionChanged = true;
+                Serial.println("Selected slot decremented.");
             }
             break;
         case BUTTON_ACTION_ONE:
             slotSelected = true;
-            BeginIrSender();
             displayUtils->clearDisplay();
             displayUtils->displayMessage("Slot " + String(selectedSlot) + " selected.");
+            Serial.println("Slot " + String(selectedSlot) + " selected.");
             break;
         default:
             break;
