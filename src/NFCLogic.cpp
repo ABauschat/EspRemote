@@ -214,4 +214,84 @@ namespace NuggetsInc
         return true; // Successfully written all pages
     }
 
+    bool NFCLogic::overwriteRecords(uint16_t tagType)
+    {
+        // Verify that a tag is present before overwriting.
+        if (!isTagPresent())
+        {
+            return false;
+        }
+    
+        // Provide initial haptic feedback.
+        Haptics::getInstance().singleVibration();
+    
+        // Determine the number of record pages (user data) that can safely be overwritten.
+        // This ensures that reserved security/OTP pages at the end remain intact.
+        size_t recordPages = 0;
+        if (tagType == 213)
+        {
+            // For NTAG213: Total pages = 45, but pages 0-3 are reserved,
+            // so pages 4–39 (36 pages) contain NDEF data.
+            recordPages = 36;
+        }
+        else if (tagType == 215)
+        {
+            // For NTAG215: Total pages = 135, user memory pages 4–129 (126 pages).
+            recordPages = 126;
+        }
+        else if (tagType == 216)
+        {
+            // For NTAG216: Although the chip reports 225 pages total,
+            // only pages 4–(4+216-1) (i.e. pages 4–219) are considered safe for user data.
+            recordPages = 216;  // Adjust as needed if your chip uses a different layout.
+        }
+        else
+        {
+            return false; // Unknown tag type.
+        }
+    
+        // Write a valid empty NDEF TLV to page 4.
+        // This blank NDEF TLV tells readers that the tag is formatted but contains no NDEF message.
+        uint8_t blankNDEF[4] = {0x03, 0x00, 0xFE, 0x00};
+        if (!nfc.ntag2xx_WritePage(4, blankNDEF))
+        {
+            return false; // Failed to write page 4.
+        }
+        {
+            uint8_t verifyData[4];
+            if (!nfc.ntag2xx_ReadPage(4, verifyData) ||
+                memcmp(blankNDEF, verifyData, 4) != 0)
+            {
+                return false; // Verification failed for page 4.
+            }
+        }
+    
+        // Overwrite remaining record pages with zeros, starting from page 5.
+        // (We leave page 4 intact so that the tag retains a valid TLV header.)
+        for (size_t page = 5; page < 4 + recordPages; ++page)
+        {
+            uint8_t zeroData[4] = {0, 0, 0, 0};
+    
+            // Write the page filled with zeros.
+            if (!nfc.ntag2xx_WritePage(page, zeroData))
+            {
+                return false; // Failed to write page.
+            }
+    
+            // Verify the written data.
+            uint8_t verifyData[4];
+            if (!nfc.ntag2xx_ReadPage(page, verifyData) ||
+                memcmp(zeroData, verifyData, 4) != 0)
+            {
+                return false; // Verification failed.
+            }
+        }
+    
+        // Provide final haptic feedback.
+        Haptics::getInstance().doubleVibration();
+    
+        return true; // Successfully cleared the record area while preserving tag formatting.
+    }
+    
+
 } // namespace NuggetsInc

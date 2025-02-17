@@ -20,6 +20,7 @@ public:
     const std::vector<uint8_t>& readRawData();
 
     bool writeTagData(const TagData& tagData);
+    bool overwriteRecords(uint16_t tagType);
 
 private:
     Adafruit_PN532 nfc;

@@ -75,12 +75,20 @@ namespace NuggetsInc
                 Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
                 return;
             }
-            else if (event.type == EVENT_UP || event.type == EVENT_DOWN || event.type == EVENT_LEFT || event.type == EVENT_RIGHT)
+            else if (event.type == EVENT_UP || event.type == EVENT_DOWN ||
+                     event.type == EVENT_LEFT || event.type == EVENT_RIGHT)
             {
                 handleScroll(event.type);
             }
+            else if (event.type == EVENT_SELECT)
+            {
+                // Bottom left button ("Select button") pressed: reformat the chip.
+                reformatChip();
+                return; // Exit after reformatting.
+            }
             else if (event.type == EVENT_ACTION_ONE)
             {
+                // The "Select" button used to initiate cloning.
                 cloneTagData = true;
             }
         }
@@ -92,9 +100,10 @@ namespace NuggetsInc
         else if (!cloneTagData && displayNeedsRefresh)
         {
             displayTagInformation();
-        } else if (cloneTagData)
+        }
+        else if (cloneTagData)
         {
-           cloneTag();
+            cloneTag();
         }
     }
 
@@ -114,20 +123,20 @@ namespace NuggetsInc
         // Populate the "Options" tab
         tabs[0].setStyle(STYLE_NONE);
         tabs[0].addLine("Select To Initiate Cloning");
+        tabs[0].addLine("Bottom Left: Reformat Chip");
         tabs[0].addLine("Left/Right To Navigate Tabs");
         tabs[0].addLine("Up/Down To Scroll");
         tabs[0].addLine("Back To Return To Menu");
-
-
 
         // Populate the "Info" tab
         tabs[3].setStyle(STYLE_NUMBERED);
         tabs[3].addLine("UID: " + String(currentTagData->interpretations.UIDHex.c_str()));
         tabs[3].addLine("Manufacturer: " + String(currentTagData->interpretations.manufacturerHex.c_str()));
-        std::string tagType = (currentTagData->tagType == 213) ? "NTAG213" : (currentTagData->tagType == 215) ? "NTAG215"
-                                                                                                              : "NTAG216";
+        std::string tagType = (currentTagData->tagType == 213) ? "NTAG213" : 
+                              (currentTagData->tagType == 215) ? "NTAG215" : "NTAG216";
         tabs[3].addLine("Tag Type: " + String(tagType.c_str()));
-        tabs[3].addLine("Total User Memory: " + String(std::to_string(currentTagData->userMemory.totalUserMemoryBytes).c_str()) + " bytes");
+        tabs[3].addLine("Total User Memory: " + 
+            String(std::to_string(currentTagData->userMemory.totalUserMemoryBytes).c_str()) + " bytes");
 
         // **Add the NDEF Records to the Info tab**
         tabs[3].addLine("NDEF Records:");
@@ -144,13 +153,13 @@ namespace NuggetsInc
                 if (byte >= 32 && byte <= 126)
                     payloadStr += char(byte);
                 else
-                    payloadStr += '.'; // Non-printable character placeholder
+                    payloadStr += '.'; // Non-printable placeholder
             }
             tabs[3].addLine("  Payload: " + payloadStr);
         }
 
-        // Populate the "Raw Data" tab with hex data formatted 4 bytes at a time
-        tabs[1].setStyle(STYLE_NUMBERED); // Set line style to numbered
+        // Populate the "Raw Data" tab with hex data (4 bytes per line)
+        tabs[1].setStyle(STYLE_NUMBERED);
         const std::vector<uint8_t> &rawData = currentTagData->rawData;
         for (size_t i = 0; i < rawData.size(); i += 4)
         {
@@ -158,24 +167,23 @@ namespace NuggetsInc
             for (size_t j = i; j < i + 4 && j < rawData.size(); ++j)
             {
                 if (rawData[j] < 16)
-                    line += "0"; // Add leading zero for single-digit hex values
+                    line += "0";
                 line += String(rawData[j], HEX) + " ";
             }
             tabs[1].addLine(line);
         }
 
-        // Populate the "ASCII" tab with ASCII data formatted 4 bytes at a time
-        tabs[2].setStyle(STYLE_NUMBERED); // Set line style to numbered
+        // Populate the "ASCII" tab (4 bytes per line)
+        tabs[2].setStyle(STYLE_NUMBERED);
         for (size_t i = 0; i < rawData.size(); i += 4)
         {
             String asciiLine = "";
             for (size_t j = i; j < i + 4 && j < rawData.size(); ++j)
             {
-                // ASCII representation
                 if (rawData[j] >= 32 && rawData[j] <= 126)
                     asciiLine += char(rawData[j]);
                 else
-                    asciiLine += '.'; // Non-printable character placeholder
+                    asciiLine += '.';
             }
             tabs[2].addLine(asciiLine);
         }
@@ -183,27 +191,21 @@ namespace NuggetsInc
 
     void CloneNFCState::displayTagInformation()
     {
-        // Get the display instance
         Arduino_GFX *display = Device::getInstance().getDisplay();
-
-        // Refresh the current tab to display the content
         tabs[currentTabIndex].refreshTab();
-
-        // Draw the tab headers
         tabs[currentTabIndex].DrawTabHeaders(tabs, currentTabIndex);
-
         displayNeedsRefresh = false;
     }
 
     bool CloneNFCState::cloneTag()
     {
-
-        // Check if a tag is still present before writing
+        // Check that a tag is present
         if (!nfcLogic->isTagPresent())
         {
             displayUtils->displayMessage("Searching For NFC Tag");
             return false;
-        } else {
+        }
+        else {
             displayUtils->displayMessage("NFC Tag Detected: Keep Steady");
         }
 
@@ -213,7 +215,7 @@ namespace NuggetsInc
             return false;
         }
 
-        // Proceed to write tag data
+        // Write tag data (clone)
         if (nfcLogic->writeTagData(*currentTagData))
         {
             displayUtils->displayMessage("Tag Cloned Successfully");
@@ -240,7 +242,7 @@ namespace NuggetsInc
             if (currentTabIndex > 0)
             {
                 currentTabIndex--;
-                tabs[currentTabIndex].setNeedsRefresh(true); // Add this line
+                tabs[currentTabIndex].setNeedsRefresh(true);
                 displayNeedsRefresh = true;
             }
             break;
@@ -248,7 +250,7 @@ namespace NuggetsInc
             if (currentTabIndex < tabs.size() - 1)
             {
                 currentTabIndex++;
-                tabs[currentTabIndex].setNeedsRefresh(true); // Add this line
+                tabs[currentTabIndex].setNeedsRefresh(true);
                 displayNeedsRefresh = true;
             }
             break;
@@ -268,10 +270,8 @@ namespace NuggetsInc
             TagData NewtagData = tag.parseRawData(rawData);
 
             int validationCode = tag.ValidateTagData(NewtagData);
-
             if (validationCode != 0)
             {
-                // Play a long vibration to indicate an error
                 displayUtils->displayMessage("Un-Supported Tag");
                 delay(1500);
                 return;
@@ -279,7 +279,6 @@ namespace NuggetsInc
             else
             {
                 currentTagData = new TagData(NewtagData);
-                // Populate the tabs once after tag is read
                 populateTabs();
             }
 
@@ -296,4 +295,42 @@ namespace NuggetsInc
         }
     }
 
+    // New method: reformatChip()
+    // This creates a new TagData instance that preserves essential fields
+    // while wiping (clearing) user data (NDEF records and raw data).
+    bool CloneNFCState::reformatChip()
+    {
+        if (!nfcLogic->isTagPresent())
+        {
+            displayUtils->displayMessage("Searching For NFC Tag");
+            return false;
+        }
+        displayUtils->displayMessage("Reformatting NFC Chip...");
+
+        TagData formattedData;
+        if (currentTagData != nullptr)
+        {
+            formattedData = TagData(*currentTagData);
+        }
+        else
+        {
+            displayUtils->displayMessage("No Tag Data Available for Formatting");
+            delay(1500);
+            return false;
+        }
+
+        if (nfcLogic->overwriteRecords(formattedData.tagType))
+        {
+            displayUtils->displayMessage("Chip Reformatted Successfully");
+            delay(2000);
+            Application::getInstance().changeState(StateFactory::createState(MENU_STATE));
+            return true;
+        }
+        else
+        {
+            displayUtils->displayMessage("Error Reformating Chip");
+            delay(2000);
+            return false;
+        }
+    }
 } // namespace NuggetsInc

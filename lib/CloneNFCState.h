@@ -1,4 +1,3 @@
-// CloneNFCState.h
 #ifndef CLONE_NFC_STATE_H
 #define CLONE_NFC_STATE_H
 
@@ -25,10 +24,13 @@ public:
 private:
     // NFC functions
     void readNFCTag();
+
     bool cloneTag();
+    bool reformatChip();
     void handleScroll(EventType eventType);
+
     bool tagDetected;
-    bool cloneTagData;
+    bool cloneTagData;          // (This flag may be repurposed or removed)
     bool displayNeedsRefresh;
     Tab currentTabWindow;
     NFCLogic* nfcLogic;
@@ -38,7 +40,6 @@ private:
     std::vector<Tab> tabs;
     int currentTabIndex;
     void populateTabs();
-
 };
 
 } // namespace NuggetsInc

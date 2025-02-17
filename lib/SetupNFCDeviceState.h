@@ -31,6 +31,17 @@ namespace NuggetsInc
         unsigned long startTime;  
         TagData* currentTagData;
 
+        // ----- New members for manual input -----
+        bool manualInputMode;
+        int manualInputCursor;
+        String manualMac;
+
+        // ----- New helper methods for manual input -----
+        void updateManualInputDisplay();
+        void processManualInputEvent(const Event &event);
+        char incrementHexDigit(char digit);
+        char decrementHexDigit(char digit);
+
         void displaySetupInstructions();
         void readNFCTag();
     };
