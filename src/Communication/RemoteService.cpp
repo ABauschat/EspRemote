@@ -1,17 +1,21 @@
 #include "RemoteService.h"
 #include "RemoteControlState.h"
 #include "DisplayUtils.h"
+#include "Utils/TimeUtils.h"
 #include <WiFi.h>
 #include <esp_wifi.h>
 #include <esp_wifi_types.h>
 #include <cstring>
 
 namespace NuggetsInc {
+using namespace NuggetsInc; // For TimeUtils functions
 
 RemoteService* RemoteService::activeInstance_ = nullptr;
 
-RemoteService::RemoteService() : isPeerAdded_(false) {
+RemoteService::RemoteService() : isPeerAdded_(false), selfMAC_(nullptr) {
     memset(targetMAC_, 0, sizeof(targetMAC_));
+    selfMAC_ = new uint8_t[6];
+    memset(selfMAC_, 0, 6);
     activeInstance_ = this;
 }
 
@@ -21,7 +25,7 @@ bool RemoteService::begin(const uint8_t* targetMac) {
     // Copy target MAC
     memcpy(targetMAC_, targetMac, 6);
 
-    // Set sender MAC 
+    // Set sender MAC
     String selfMac = WiFi.macAddress();
     stringToMac(selfMac, selfMAC_);
     
@@ -35,11 +39,6 @@ bool RemoteService::begin(const uint8_t* targetMac) {
     esp_wifi_set_promiscuous(true);
     esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
     esp_wifi_set_promiscuous(false);
-    
-    Serial.print("Remote MAC Address: ");
-    Serial.println(WiFi.macAddress());
-    Serial.print("Target MAC Address: ");
-    Serial.println(macToString(targetMAC_));
     
     // Initialize ESP-NOW
     if (esp_now_init() != ESP_OK) {
@@ -60,7 +59,6 @@ bool RemoteService::begin(const uint8_t* targetMac) {
         
         if (esp_now_add_peer(&peerInfo) == ESP_OK) {
             isPeerAdded_ = true;
-            Serial.println("Target peer added successfully");
         } else {
             Serial.println("Failed to add target peer");
             return false;
@@ -83,8 +81,8 @@ bool RemoteService::sendCommand(uint8_t commandID, const char* data, uint32_t ti
     memset(&message, 0, sizeof(message));
     message.messageID = (uint32_t)millis();
     
-     // Set sender MAC (this Remote)
-     memcpy(message.SenderMac, selfMAC_, 6);
+    // Set sender MAC (this Remote)
+    memcpy(message.SenderMac, selfMAC_, 6);
     
     strcpy(message.messageType, "cmd");
     message.commandID = commandID;
@@ -119,8 +117,7 @@ String RemoteService::getTargetMacString() const {
 }
 
 void RemoteService::onDataSentCallback(const uint8_t *mac_addr, esp_now_send_status_t status) {
-    if (status == ESP_NOW_SEND_SUCCESS) {
-    } else {
+    if (status != ESP_NOW_SEND_SUCCESS) {
         Serial.println("Message send failed");
     }
 }
@@ -139,12 +136,36 @@ void RemoteService::processReceivedMessage(const uint8_t* senderMac, const struc
     message.messageType[sizeof(message.messageType) - 1] = '\0';
     message.data[sizeof(message.data) - 1] = '\0';
     message.path[sizeof(message.path) - 1] = '\0';
-    
-    // Handle command messages
-    if (strcmp(message.messageType, "cmd") == 0) {
-        sendAck(message, senderMac);
-        processDisplayCommand(message.commandID, message.data);
+
+    if (strcmp(message.messageType, "cmd") != 0) {
+        return;
     }
+
+    if (!isDestinationForSelf(message)) {
+        return;
+    }
+
+    if (isDuplicateMessage(senderMac, message.messageID)) {
+        return;
+    }
+
+    sendAck(message, senderMac);
+    processDisplayCommand(message.commandID, message.data);
+}
+
+bool RemoteService::isDuplicateMessage(const uint8_t src[6], uint32_t messageID) {
+    msec32 nowMs = now_ms();
+    const msec32 window = 2000;
+    MsgKey key;
+    memcpy(key.mac, src, 6);
+    key.id = messageID;
+
+    auto it = recentMsgCache_.find(key);
+    if (it != recentMsgCache_.end() && within_window(it->second, window)) {
+        return true;
+    }
+    recentMsgCache_[key] = nowMs;
+    return false;
 }
 
 void RemoteService::sendAck(const struct_message& originalMsg, const uint8_t* senderMac) {
@@ -269,6 +290,33 @@ RemoteService::~RemoteService() {
         delete[] selfMAC_;
         selfMAC_ = nullptr;
     }
+}
+
+bool RemoteService::isDestinationForSelf(const struct_message& msg) {
+    uint8_t selfMac[6];
+    setSelfMac(selfMac);
+
+    bool destIsZero = isZeroMac(msg.destinationMac);
+    bool isDestination = destIsZero || memcmp(msg.destinationMac, selfMac, 6) == 0;
+
+    return isDestination;
+}
+
+void RemoteService::setSelfMac(uint8_t out[6]) {
+    String macStr = WiFi.macAddress();
+    int b[6];
+    if (sscanf(macStr.c_str(), "%02x:%02x:%02x:%02x:%02x:%02x", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) {
+        for (int i = 0; i < 6; i++) {
+            out[i] = (uint8_t)b[i];
+        }
+    }
+}
+
+bool RemoteService::isZeroMac(const uint8_t mac[6]) {
+    for (int i = 0; i < 6; ++i) {
+        if (mac[i] != 0) return false;
+    }
+    return true;
 }
 
 } // namespace NuggetsInc
