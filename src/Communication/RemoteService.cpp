@@ -159,11 +159,23 @@ bool RemoteService::isDuplicateMessage(const uint8_t src[6], uint32_t messageID)
     MsgKey key;
     memcpy(key.mac, src, 6);
     key.id = messageID;
-
-    auto it = recentMsgCache_.find(key);
-    if (it != recentMsgCache_.end() && within_window(it->second, window)) {
+    
+    auto found = recentMsgCache_.find(key);
+    if (found != recentMsgCache_.end()) {
         return true;
     }
+    
+    if (recentMsgCache_.size() > 50) {
+        auto it = recentMsgCache_.begin();
+        while (it != recentMsgCache_.end()) {
+            if (!within_window(it->second, window)) {
+                it = recentMsgCache_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+    
     recentMsgCache_[key] = nowMs;
     return false;
 }
