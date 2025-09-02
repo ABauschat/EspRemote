@@ -211,6 +211,17 @@ uint8_t* RemoteService::stringToMac(const String& s, uint8_t out[6]) {
     return nullptr;
 }
 
+bool RemoteService::isDestinationForSelf(const struct_message& msg) {
+    return isZeroMac(msg.destinationMac) || memcmp(msg.destinationMac, selfMAC_, 6) == 0;
+}
+
+bool RemoteService::isZeroMac(const uint8_t mac[6]) {
+    for (int i = 0; i < 6; ++i) {
+        if (mac[i] != 0) return false;
+    }
+    return true;
+}
+
 void RemoteService::processDisplayCommand(uint8_t commandID, const char* data) {
     auto* remoteState = RemoteControlState::getActiveInstance();
 
@@ -290,33 +301,6 @@ RemoteService::~RemoteService() {
         delete[] selfMAC_;
         selfMAC_ = nullptr;
     }
-}
-
-bool RemoteService::isDestinationForSelf(const struct_message& msg) {
-    uint8_t selfMac[6];
-    setSelfMac(selfMac);
-
-    bool destIsZero = isZeroMac(msg.destinationMac);
-    bool isDestination = destIsZero || memcmp(msg.destinationMac, selfMac, 6) == 0;
-
-    return isDestination;
-}
-
-void RemoteService::setSelfMac(uint8_t out[6]) {
-    String macStr = WiFi.macAddress();
-    int b[6];
-    if (sscanf(macStr.c_str(), "%02x:%02x:%02x:%02x:%02x:%02x", &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) {
-        for (int i = 0; i < 6; i++) {
-            out[i] = (uint8_t)b[i];
-        }
-    }
-}
-
-bool RemoteService::isZeroMac(const uint8_t mac[6]) {
-    for (int i = 0; i < 6; ++i) {
-        if (mac[i] != 0) return false;
-    }
-    return true;
 }
 
 } // namespace NuggetsInc

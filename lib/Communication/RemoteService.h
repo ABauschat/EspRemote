@@ -43,7 +43,6 @@ private:
     // Utility functions
     static String macToString(const uint8_t mac[6]);
     static uint8_t* stringToMac(const String& s, uint8_t out[6]);
-    void setSelfMac(uint8_t out[6]);
     bool isZeroMac(const uint8_t mac[6]);
 
     // Deduplication cache
