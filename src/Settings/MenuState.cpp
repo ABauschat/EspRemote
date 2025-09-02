@@ -12,15 +12,6 @@ namespace NuggetsInc {
 MenuState::MenuState()
     : menuIndex(0),
       displayUtils(nullptr) {
-        
-
-    // ESP-Connect
-    // Remote Control
-    // NFC Options
-    // IR Options
-    // APPS
-    // Settings
-    // Power
 
     menu[0] = "ESP-Connect";
     menu[1] = "Remote Control";
@@ -30,9 +21,7 @@ MenuState::MenuState()
     menu[5] = "MAC Addresses";
     menu[6] = "Sync Nodes";
     menu[7] = "Power";
-    //menu[8] = "Settings";
 
-    // Initialize DisplayUtils
     displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
 }
 

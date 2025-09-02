@@ -15,6 +15,7 @@ namespace NuggetsInc
     RemoteControlState::RemoteControlState(uint8_t *macAddress)
         : displayUtils(nullptr), remoteService_(nullptr)
     {
+        // Save the MAC address of the target device
         if (macAddress)
         {
             memcpy(device2MAC, macAddress, sizeof(device2MAC));
@@ -24,7 +25,6 @@ namespace NuggetsInc
             memset(device2MAC, 0, sizeof(device2MAC));
         }
 
-        // Create RemoteService
         remoteService_ = new RemoteService();
     }
 
@@ -35,11 +35,13 @@ namespace NuggetsInc
             delete displayUtils;
             displayUtils = nullptr;
         }
+
         if (remoteService_)
         {
             delete remoteService_;
             remoteService_ = nullptr;
         }
+
         if (activeInstance == this)
         {
             activeInstance = nullptr;
@@ -53,6 +55,7 @@ namespace NuggetsInc
 
         // Initialize RemoteService with target MAC
         if (remoteService_ && remoteService_->begin(device2MAC)) {
+            // Send BOOOP to Notify target
             remoteService_->sendCommand(CMD_BOOOP);
         } 
     }
@@ -69,22 +72,15 @@ namespace NuggetsInc
 
         while (eventManager.getNextEvent(event))
         {
-            if (remoteService_ && remoteService_->isPeerConnected())
-            {
-                handleInput(event.type);
-            }
-            else
-            {
-                displayUtils->displayMessage("Not connected");
-            }
+            handleInput(event.type);
         }
     }
 
     void RemoteControlState::handleInput(EventType eventType)
     {
-        if (!remoteService_ || !remoteService_->isPeerConnected())
+        if (!remoteService_)
         {
-            displayUtils->displayMessage("Not connected");
+            displayUtils->displayMessage("Internal Error: RemoteService not initialized");
             return;
         }
 

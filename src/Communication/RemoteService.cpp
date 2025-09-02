@@ -15,22 +15,20 @@ RemoteService::RemoteService() : isPeerAdded_(false) {
     activeInstance_ = this;
 }
 
-RemoteService::~RemoteService() {
-    if (activeInstance_ == this) {
-        activeInstance_ = nullptr;
-    }
-}
-
 bool RemoteService::begin(const uint8_t* targetMac) {
     if (!targetMac) return false;
     
     // Copy target MAC
     memcpy(targetMAC_, targetMac, 6);
+
+    // Set sender MAC 
+    String selfMac = WiFi.macAddress();
+    stringToMac(selfMac, selfMAC_);
     
     // Initialize WiFi in station mode
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
-    delay(100);
+    delay(80);
     
     // Set WiFi channel to 1 for ESP-NOW
     WiFi.setSleep(false);
@@ -81,20 +79,12 @@ bool RemoteService::sendCommand(uint8_t commandID, const char* data, uint32_t ti
         return false;
     }
     
-    // Build message
     struct_message message;
     memset(&message, 0, sizeof(message));
-    message.messageID = millis();
+    message.messageID = (uint32_t)millis();
     
-    // Set sender MAC
-    String selfMac = WiFi.macAddress();
-    int b[6];
-    if (sscanf(selfMac.c_str(), "%02x:%02x:%02x:%02x:%02x:%02x", 
-               &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) {
-        for (int i = 0; i < 6; i++) {
-            message.SenderMac[i] = (uint8_t)b[i];
-        }
-    }
+     // Set sender MAC (this Remote)
+     memcpy(message.SenderMac, selfMAC_, 6);
     
     strcpy(message.messageType, "cmd");
     message.commandID = commandID;
@@ -106,7 +96,7 @@ bool RemoteService::sendCommand(uint8_t commandID, const char* data, uint32_t ti
         message.data[0] = '\0';
     }
     
-    // Clear routing fields (direct send only)
+    // Clear routing fields
     memset(message.destinationMac, 0, sizeof(message.destinationMac));
     message.path[0] = '\0';
     
@@ -150,12 +140,9 @@ void RemoteService::processReceivedMessage(const uint8_t* senderMac, const struc
     message.data[sizeof(message.data) - 1] = '\0';
     message.path[sizeof(message.path) - 1] = '\0';
     
-    // Handle command messages (display updates from Sender)
+    // Handle command messages
     if (strcmp(message.messageType, "cmd") == 0) {
-        // Send ACK back
         sendAck(message, senderMac);
-        
-        // Process display command - delegate to DisplayUtils
         processDisplayCommand(message.commandID, message.data);
     }
 }
@@ -170,16 +157,9 @@ void RemoteService::sendAck(const struct_message& originalMsg, const uint8_t* se
     ackMessage.data[0] = '\0';
     
     // Set sender MAC (this Remote)
-    String selfMac = WiFi.macAddress();
-    int b[6];
-    if (sscanf(selfMac.c_str(), "%02x:%02x:%02x:%02x:%02x:%02x", 
-               &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) {
-        for (int i = 0; i < 6; i++) {
-            ackMessage.SenderMac[i] = (uint8_t)b[i];
-        }
-    }
+    memcpy(ackMessage.SenderMac, selfMAC_, 6);
     
-    // Clear routing fields (direct ACK)
+    // Clear routing fields
     memset(ackMessage.destinationMac, 0, sizeof(ackMessage.destinationMac));
     ackMessage.path[0] = '\0';
     
@@ -198,22 +178,19 @@ String RemoteService::macToString(const uint8_t mac[6]) {
     return String(buf);
 }
 
-bool RemoteService::stringToMac(const String& s, uint8_t out[6]) {
+uint8_t* RemoteService::stringToMac(const String& s, uint8_t out[6]) {
     int b[6];
     if (sscanf(s.c_str(), "%02x:%02x:%02x:%02x:%02x:%02x", 
                &b[0], &b[1], &b[2], &b[3], &b[4], &b[5]) == 6) {
         for (int i = 0; i < 6; i++) {
             out[i] = (uint8_t)b[i];
         }
-        return true;
+        return out;
     }
-    return false;
+    return nullptr;
 }
 
 void RemoteService::processDisplayCommand(uint8_t commandID, const char* data) {
-    Serial.printf("Processing display command 0x%02X with data: %s\n", commandID, data ? data : "");
-
-    // Get the active RemoteControlState instance to process display commands
     auto* remoteState = RemoteControlState::getActiveInstance();
 
     if (!remoteState) {
@@ -221,7 +198,6 @@ void RemoteService::processDisplayCommand(uint8_t commandID, const char* data) {
         return;
     }
 
-    // Process the display command using the existing handlers
     switch (commandID) {
         case CMD_CLEAR_DISPLAY:
             remoteState->handleClearDisplay();
@@ -276,6 +252,22 @@ void RemoteService::processDisplayCommand(uint8_t commandID, const char* data) {
         default:
             Serial.printf("Unknown display command ID: 0x%02X\n", commandID);
             break;
+    }
+}
+
+RemoteService::~RemoteService() {
+    if (activeInstance_ == this) {
+        activeInstance_ = nullptr;
+    }
+
+    esp_now_deinit();
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
+    delay(50);
+    
+    if (selfMAC_) {
+        delete[] selfMAC_;
+        selfMAC_ = nullptr;
     }
 }
 

@@ -30,6 +30,7 @@ public:
 
 private:
     uint8_t targetMAC_[6];
+    uint8_t* selfMAC_;
     bool isPeerAdded_;
     
     // ESP-NOW callbacks
@@ -45,7 +46,7 @@ private:
 
     // Utility functions
     static String macToString(const uint8_t mac[6]);
-    static bool stringToMac(const String& s, uint8_t out[6]);
+    static uint8_t* stringToMac(const String& s, uint8_t out[6]);
 
     // Static instance for callbacks
     static RemoteService* activeInstance_;
