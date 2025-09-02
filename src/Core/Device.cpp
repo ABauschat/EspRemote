@@ -104,10 +104,10 @@ void Device::update() {
     EventManager& eventManager = EventManager::getInstance();
     unsigned long currentTime = millis();
 
-    // Macro to simplify debounce handling
+    // Macro to simplify debounce handling (rollover-safe)
     #define DEBOUNCE_BUTTON(pin, pressedFlag, lastPressTime, event) \
         if (digitalRead(pin) == LOW) { \
-            if (!pressedFlag && (currentTime - lastPressTime >= debounceInterval)) { \
+            if (!pressedFlag && ((unsigned long)(currentTime - lastPressTime) >= debounceInterval)) { \
                 pressedFlag = true; \
                 lastPressTime = currentTime; \
                 eventManager.queueEvent({event}); \
@@ -125,13 +125,13 @@ void Device::update() {
     DEBOUNCE_BUTTON(ACTION_ONE_BUTTON_PIN, actionOnePressed, lastActionOnePressTime, EVENT_ACTION_ONE);
     DEBOUNCE_BUTTON(ACTION_TWO_BUTTON_PIN, actionTwoPressed, lastActionTwoPressTime, EVENT_ACTION_TWO);
 
-    // Special handling for BACK_BUTTON_PIN due to double press detection
+    // Special handling for BACK_BUTTON_PIN due to double press detection (rollover-safe)
     if (digitalRead(BACK_BUTTON_PIN) == LOW) {
-        if (!backPressed && (currentTime - lastBackPressTime >= debounceInterval)) {
+        if (!backPressed && ((unsigned long)(currentTime - lastBackPressTime) >= debounceInterval)) {
             backPressed = true;
             unsigned long now = millis();
 
-            if (now - lastBackButtonPressTime < doublePressThreshold) {
+            if ((unsigned long)(now - lastBackButtonPressTime) < doublePressThreshold) {
                 // Double press detected
                 goToDeepSleep();
             } else {

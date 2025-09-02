@@ -27,8 +27,10 @@ MenuState::MenuState()
     menu[2] = "NFC Options";
     menu[3] = "IR Options";
     menu[4] = "Applications";
-    menu[5] = "Power";
-    //menu[6] = "Settings";
+    menu[5] = "MAC Addresses";
+    menu[6] = "Sync Nodes";
+    menu[7] = "Power";
+    //menu[8] = "Settings";
 
     // Initialize DisplayUtils
     displayUtils = new DisplayUtils(Device::getInstance().getDisplay());
@@ -112,10 +114,16 @@ void MenuState::executeSelection() {
         case 4: // Applications
             app.changeState(StateFactory::createState(APPLICATION_STATE));
             break;
-        case 5: // Power
+        case 5: // MAC Addresses
+            app.changeState(StateFactory::createState(MAC_ADDRESS_MENU_STATE));
+            break;
+        case 6: // Sync Nodes
+            app.changeState(StateFactory::createState(SYNC_NODES_STATE));
+            break;
+        case 7: // Power
             app.changeState(StateFactory::createState(POWER_OPTIONS_STATE));
             break;
-        //case 6: // Settings
+        //case 8: // Settings
             //app.changeState(StateFactory::createState(SETTINGS_STATE));
            // break;
         default:

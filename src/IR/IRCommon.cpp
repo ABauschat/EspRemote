@@ -2,6 +2,10 @@
 
 #include "IRCommon.h"
 #include <LittleFS.h>
+
+// Define LEDC channel for ESP32S3 before including IRremote
+#define SEND_LEDC_CHANNEL 0
+
 #include <IRremote.hpp>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -229,7 +233,8 @@ namespace NuggetsInc
     {
         IRData buttonIRData;
 
-        uint8_t len = IrReceiver.decodedIRData.rawDataPtr->rawlen;
+        // In newer IRremote versions, use irparams.rawbuf and irparams.rawlen
+        uint8_t len = IrReceiver.irparams.rawlen;
 
         if (len - 1 > MAX_RAW_DATA_SIZE)
         {
@@ -238,7 +243,7 @@ namespace NuggetsInc
 
         for (uint8_t i = 1; i < len; i++)
         {
-            buttonIRData.rawData[i - 1] = IrReceiver.decodedIRData.rawDataPtr->rawbuf[i] * MICROS_PER_TICK;
+            buttonIRData.rawData[i - 1] = IrReceiver.irparams.rawbuf[i] * MICROS_PER_TICK;
         }
 
         buttonIRData.rawDataLength = len - 1;

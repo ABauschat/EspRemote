@@ -1,19 +1,21 @@
 #include "StateFactory.h"
-#include "MenuState.h"
-#include "SnakeGameState.h"
-#include "ClearState.h"
-#include "CloneNFCState.h"
-#include "RemoteControlState.h"
-#include "EnterRemoteControlState.h"
-#include "SetupNFCDeviceState.h"
-#include "ApplicationState.h"
-#include "IROptionsState.h"
-#include "IRRemoteState.h"
-#include "NFCOptionsState.h"
-#include "PowerOptionsState.h"
-#include "SettingsState.h"
-#include "SetupNewRemoteState.h"
-#include "RemoteBrowserState.h"
+#include "Settings/MenuState.h"
+#include "Games/SnakeGameState.h"
+#include "Utils/ClearState.h"
+#include "NFC/CloneNFCState.h"
+#include "Communication/RemoteControlState.h"
+#include "Communication/EnterRemoteControlState.h"
+#include "NFC/SetupNFCDeviceState.h"
+#include "Games/ApplicationState.h"
+#include "IR/IROptionsState.h"
+#include "IR/IRRemoteState.h"
+#include "NFC/NFCOptionsState.h"
+#include "Settings/PowerOptionsState.h"
+#include "Settings/SettingsState.h"
+#include "Settings/SetupNewRemoteState.h"
+#include "Settings/RemoteBrowserState.h"
+#include "Communication/MacAddressMenuState.h"
+#include "Communication/SyncNodesState.h"
 
 namespace NuggetsInc {
 
@@ -51,6 +53,10 @@ AppState* StateFactory::createActualState(StateType type) {
             return new SetupNewRemoteState();
         case REMOTE_BROWSER_STATE:
             return new RemoteBrowserState();
+        case MAC_ADDRESS_MENU_STATE:
+            return new MacAddressMenuState();
+        case SYNC_NODES_STATE:
+            return new SyncNodesState();
         default:
             return nullptr;
     }

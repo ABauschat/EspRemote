@@ -2,6 +2,7 @@
 #define SNAKEGAMESTATE_H
 
 #include "State.h"
+#include "Device.h" 
 
 namespace NuggetsInc {
 
@@ -21,8 +22,6 @@ private:
     void spawnApple();
     void gameOver();
 
-    static const int SCREEN_WIDTH = 536;
-    static const int SCREEN_HEIGHT = 220;
     static const int SNAKE_SIZE = 10;
     static const int SCORE_AREA_HEIGHT = 30; 
     static const int BOTTOM_MARGIN = 10; // Changed from 2 to 10

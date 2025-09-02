@@ -35,6 +35,9 @@ public:
     // Update device state and generate events
     void update();
 
+    #define SCREEN_WIDTH 536
+    #define SCREEN_HEIGHT 220
+
     // Input pins
     static const int JOY_UP_PIN = 1;
     static const int JOY_DOWN_PIN = 2;

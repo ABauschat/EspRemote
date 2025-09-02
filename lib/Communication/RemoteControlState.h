@@ -6,23 +6,17 @@
 #include "DisplayUtils.h"
 #include "StateFactory.h"
 #include "Config.h"
-#include <WiFi.h>
-#include <esp_now.h>
+#include "Communication/MessageTypes.h"
+
+namespace NuggetsInc {
+    class RemoteService; // Forward declaration
+}
 
 namespace NuggetsInc
 {
     class RemoteControlState : public AppState
     {
     public:
-        // Define the message structure
-        struct struct_message
-        {
-            uint32_t messageID;     // Unique ID for each message
-            char messageType[10];
-            char command[20];
-            char data[50];
-        };
-
         // Define command types
         enum class CommandType
         {
@@ -38,6 +32,8 @@ namespace NuggetsInc
             FILL_SCREEN,
             DRAW_RECT,
             FILL_RECT,
+            BEGIN_PLOT,
+            PLOT_POINT,
             UNKNOWN
         };
 
@@ -48,19 +44,7 @@ namespace NuggetsInc
         void onExit() override;
         void update() override;
 
-    private:
-        void handleInput(EventType eventType);
-        void setupESPNow();
-
-        static void onDataSentCallback(const uint8_t *mac_addr, esp_now_send_status_t status);
-        static void onDataRecvCallback(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
-
-        void handleOnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
-        void handleOnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
-
-        CommandType mapCommandStringToEnum(const char* command);
-
-        // Command handlers
+        // Public display command handlers for RemoteService
         void handleClearDisplay();
         void handleDisplayMessage(const String& message);
         void handleNewTerminalDisplay(const String& message);
@@ -73,11 +57,22 @@ namespace NuggetsInc
         void handleFillScreen(const char* data);
         void handleDrawRect(const char* data);
         void handleFillRect(const char* data);
+        void handleBeginPlot(const char* data);
+        void handlePlotPoint(const char* data);
+        void handleSyncNodes(const char* data);
+
+        // Get active instance for RemoteService
+        static RemoteControlState* getActiveInstance() { return activeInstance; }
+
+    private:
+        void handleInput(EventType eventType);
+
+        // Private members
 
         static RemoteControlState *activeInstance;
         DisplayUtils *displayUtils;
+        RemoteService *remoteService_;
         uint8_t device2MAC[6];
-        bool isPeerAdded;
     };
 } // namespace NuggetsInc
 

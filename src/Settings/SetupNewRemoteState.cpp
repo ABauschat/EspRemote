@@ -68,7 +68,7 @@ namespace NuggetsInc
 
                     if (button == BUTTON_ACTION_TWO)
                     {
-                        if (currentTime - lastPressTime < doublePressThreshold)
+                        if ((unsigned long)(currentTime - lastPressTime) < doublePressThreshold)
                         {
                             pressCount++;
                         }

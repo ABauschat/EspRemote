@@ -1,7 +1,9 @@
 #include "Application.h"
 #include "StateFactory.h"
 #include "Device.h"
-#include "Sounds.h"
+#include "Utils/Sounds.h"
+#include "Communication/MacAddressStorage.h"
+#include <LittleFS.h>
 
 namespace NuggetsInc {
 
@@ -14,6 +16,12 @@ Application::Application() : currentState(nullptr) {}
 
 void Application::init() {
     Device::getInstance().init();
+
+    // Initialize MAC address storage early
+    MacAddressStorage& macStorage = MacAddressStorage::getInstance();
+    if (!macStorage.init()) {
+        Serial.println("Warning: Failed to initialize MAC address storage");
+    }
 
     // Clear the screen and set text properties
     Arduino_GFX* gfx = Device::getInstance().getDisplay();

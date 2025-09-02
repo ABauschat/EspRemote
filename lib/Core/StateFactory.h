@@ -21,6 +21,8 @@ enum StateType {
     NFC_OPTIONS_STATE,
     POWER_OPTIONS_STATE,
     SETTINGS_STATE,
+    MAC_ADDRESS_MENU_STATE,
+    SYNC_NODES_STATE,
 };
 
 class StateFactory {

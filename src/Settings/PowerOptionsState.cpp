@@ -26,9 +26,9 @@ namespace NuggetsInc
 
     void PowerOptionsState::update()
     {
-        // Check if the update interval has passed
+        // Check if the update interval has passed (rollover-safe)
         unsigned long currentTime = millis();
-        if (currentTime - lastUpdateTime >= UPDATE_INTERVAL)
+        if ((unsigned long)(currentTime - lastUpdateTime) >= UPDATE_INTERVAL)
         {
             lastUpdateTime = currentTime; // Reset the timer
 

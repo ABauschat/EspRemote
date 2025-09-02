@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "Application.h"
 #include "esp_sleep.h"
-#include "Haptics.h"
+#include "Utils/Haptics.h"
 
 using namespace NuggetsInc;
 
